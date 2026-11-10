@@ -1,0 +1,53 @@
+@startuml 01-use-case
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Account Owner" as Owner
+actor "Scheduler (Simulated)" as Scheduler
+
+rectangle "DuePing System" {
+    usecase "Manage Clients & Projects" as UC_Clients
+    usecase "Create / Send Invoice" as UC_CreateSend
+    usecase "Import Invoices (CSV)" as UC_Import
+    usecase "Record Payment" as UC_Payment
+    usecase "Mark Promise Kept" as UC_PromiseKept
+    usecase "Raise Blocker" as UC_RaiseBlocker
+    usecase "Generate Next Action" as UC_GenAction
+    usecase "Resolve Blocker" as UC_ResolveBlocker
+    usecase "Log Follow-up" as UC_FollowUp
+    usecase "Record Payment Promise" as UC_Promise
+    usecase "Attach Document" as UC_Document
+    usecase "Generate Reminder" as UC_Reminder
+    usecase "View Action Centre" as UC_ActionCenter
+    usecase "Run Daily Check" as UC_DailyCheck
+    usecase "Detect Missed Promises" as UC_DetectMissed
+    usecase "View Dashboard & Aging" as UC_Dashboard
+    usecase "View Audit Log" as UC_Audit
+    usecase "Write Off Invoice" as UC_WriteOff
+}
+
+Owner --> UC_Clients
+Owner --> UC_CreateSend
+Owner --> UC_Import
+Owner --> UC_Payment
+Owner --> UC_RaiseBlocker
+Owner --> UC_ResolveBlocker
+Owner --> UC_FollowUp
+Owner --> UC_Promise
+Owner --> UC_Document
+Owner --> UC_Reminder
+Owner --> UC_ActionCenter
+Owner --> UC_DailyCheck
+Owner --> UC_Dashboard
+Owner --> UC_Audit
+Owner --> UC_WriteOff
+
+Scheduler --> UC_DailyCheck
+
+UC_RaiseBlocker ..> UC_GenAction : <<include>>
+UC_DailyCheck ..> UC_DetectMissed : <<include>>
+UC_PromiseKept ..> UC_Payment : <<extend>>
+
+@enduml
+
