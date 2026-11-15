@@ -1,0 +1,79 @@
+@import './tokens.css';
+@import '@fontsource-variable/inter';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: var(--hairline);
+  }
+
+  html {
+    font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "InterVariable", "Inter", system-ui, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Accessible focus ring */
+  :focus-visible {
+    outline: 2px solid var(--tint);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background-color: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+  }
+
+  .hairline-b {
+    border-bottom: 0.5px solid var(--hairline);
+  }
+
+  .hairline-t {
+    border-top: 0.5px solid var(--hairline);
+  }
+
+  .hairline {
+    border: 0.5px solid var(--hairline);
+  }
+
+  .text-title-large {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  .text-hero {
+    font-size: clamp(3.5rem, 11vw, 10rem);
+    font-weight: 200;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

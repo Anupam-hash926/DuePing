@@ -10,6 +10,7 @@ import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
 import { ClientsPage } from './pages/ClientsPage'
 import { ImportPage } from './pages/ImportPage'
 import { AuditPage } from './pages/AuditPage'
+import { DevUIPage } from './pages/DevUIPage'
 
 export const App: React.FC = () => {
   return (
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
               <Route path="/clients/:id" element={<ClientsPage />} />
               <Route path="/import" element={<ImportPage />} />
               <Route path="/audit" element={<AuditPage />} />
+              <Route path="/__ui" element={<DevUIPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
