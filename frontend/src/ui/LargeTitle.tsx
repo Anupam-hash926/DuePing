@@ -1,13 +1,15 @@
 import React from 'react'
 import { cn } from '../lib/cn'
 
-export interface LargeTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+export interface LargeTitleProps extends Omit<React.HTMLAttributes<HTMLHeadingElement>, 'title'> {
+  title?: React.ReactNode
   subtitle?: React.ReactNode
   badge?: React.ReactNode
 }
 
 export const LargeTitle: React.FC<LargeTitleProps> = ({
   children,
+  title,
   subtitle,
   badge,
   className,
@@ -23,7 +25,7 @@ export const LargeTitle: React.FC<LargeTitleProps> = ({
           )}
           {...props}
         >
-          {children}
+          {title ?? children}
         </h1>
         {badge}
       </div>
