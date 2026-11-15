@@ -134,40 +134,40 @@ PYTHONPATH=. .venv/bin/pytest tests/api/test_api_flow.py -v
 
 ## End-to-End Scripted Demo Walkthrough
 
-Follow this scripted 9-step demo directly in the browser UI at `http://localhost:5173` (or `http://localhost:5174`):
+Follow this scripted 9-step demo directly in the browser UI at `http://localhost:5173`:
 
-1. **Step 1 — Action Centre & Ranking:**
-   - Open `/` (home page). Notice the ranked cards due today.
-   - Use the **Rank by** dropdown to switch between *"Risk-Weighted"*, *"Largest Amount"*, and *"Most Overdue"*. Observe how cards reorder based on the active strategy.
+1. **Step 1 — Action Centre & Ranking (`/app`):**
+   - Open `/` (landing page) and click **Open the app** to reach `/app`. Notice the ranked items due today and count-up stake summary.
+   - Use the strategy **Segmented Control** to switch between *"Risk-Weighted"*, *"Largest Amount"*, and *"Most Overdue"*. Observe how the FocusCard and Up Next list reorder based on the active strategy.
 2. **Step 2 — Inspect Orbit Labs (Invoice 7):**
    - Click on `INV-OL-07` (or navigate via Invoices).
-   - Observe the open `WRONG_DETAILS` blocker and its generated NextAction. Note the `PENDING` promise scheduled for date *T+3*.
+   - Observe the open `WRONG_DETAILS` blocker and its generated NextAction connected by a tint line. Note the `PENDING` promise scheduled for date *T+3*.
 3. **Step 3 — Advance Simulated Date & Run Daily Check:**
-   - In the topbar date control, set the date to *T+4* and click **Set** (activating the `SIMULATED` badge).
-   - Click **⚡ Run Daily Check**.
-   - Notice the toast summary reporting missed promises. Refresh the page: the promise is now marked `MISSED`, a `CRITICAL` priority action appears, a notification bell item is created, and Orbit Labs' reliability score drops.
+   - In the topbar Demo popover (lightning icon), set the date to *T+4* and click **Set Date** (activating the `SIMULATED` badge).
+   - Click **Run Daily Check**.
+   - Notice the toast summary reporting missed promises. The promise is now marked `MISSED`, a `CRITICAL` priority action appears, a notification bell item is created, and Orbit Labs' reliability score drops.
 4. **Step 4 — Tone-Escalated Reminder:**
-   - On `INV-OL-07`, scroll to the **Reminder Generator** panel.
+   - On `INV-OL-07`, switch to the **Reminder** tab.
    - The tone automatically defaults to `FIRM` (or `FINAL`). Observe that the rendered message explicitly mentions the blocker and any missed promise commitment.
-   - Click **📋 Copy to Clipboard**, then click **Mark as Sent**.
+   - Click **Copy Text**, then click **Mark as Sent**.
 5. **Step 5 — Record Partial Payment on Disputed Invoice & Resolve Dispute:**
    - Open invoice `INV-GL-05` (Greenleaf Foods, status: `DISPUTED`).
-   - Click **+ Record Payment**, enter `20000.00`, and save. Notice the status remains `DISPUTED` while under investigation.
+   - Click **Record payment**, enter `20000.00`, and save. Notice the status remains `DISPUTED` while under investigation.
    - Click **Resolve** on the `DISPUTED_AMOUNT` blocker. Observe the invoice status transition automatically back to `PARTIALLY_PAID` and the dispute action cancelled.
 6. **Step 6 — Settle Invoice 11 (Sunrise Retail):**
    - Open invoice `INV-SR-11` (overdue 100 days).
-   - Click **+ Record Payment**, enter the remaining balance (`22000.00`), and submit.
+   - Click **Record payment**, enter the remaining balance (`22000.00`), and submit.
    - The invoice transitions to `PAID`, all pending actions are automatically cancelled, and a payment notification fires.
 7. **Step 7 — Inspect Collection Dashboard:**
-   - Navigate to `/dashboard`.
-   - Observe the updated total outstanding, 5-bucket aging bar chart, 6-month collection trend line, and top debtors table.
+   - Navigate to `/app/dashboard`.
+   - Observe the updated 3 big count-up numerals, 5-bucket aging bar with soft teal-to-red gradient, 6-month SVG collection trend sparkline, and top debtors list.
 8. **Step 8 — Batch CSV Import:**
-   - Navigate to `/import`. Click **📥 Download Sample CSV** (or upload `frontend/public/sample_invoices.csv`).
-   - Click **Import Invoices**.
+   - Navigate to `/app/import`. Click **Download sample CSV** (or upload `frontend/public/sample_invoices.csv`).
+   - Click **Start Import**.
    - Review the result: exactly **2 rows imported** and **2 rows rejected** with descriptive validation error rows displayed.
 9. **Step 9 — Verify Immutable Audit Ledger:**
-   - Navigate to `/audit`.
-   - Review the append-only event ledger capturing every event triggered during the demo (`InvoiceSent`, `BlockerRaised`, `PromiseMissed`, `PaymentReceived`, `InvoicePaid`, etc.).
+   - Navigate to `/app/audit`.
+   - Review the append-only event ledger grouped by day with sticky headers capturing every event triggered during the demo (`InvoiceSent`, `BlockerRaised`, `PromiseMissed`, `PaymentReceived`, `InvoicePaid`, etc.).
 
 ---
 
