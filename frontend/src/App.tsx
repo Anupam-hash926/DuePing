@@ -1,44 +1,68 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './api/queryClient'
 import { ToastProvider } from './context/ToastContext'
-import { Navbar } from './components/Navbar'
+import { AppShell } from './features/shell/AppShell'
 import { ActionCenterPage } from './pages/ActionCenterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { NewInvoicePage } from './pages/NewInvoicePage'
-import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
+import { InvoiceDetailPage } from './features/invoices/detail/InvoiceDetailPage'
 import { ClientsPage } from './pages/ClientsPage'
 import { ImportPage } from './pages/ImportPage'
 import { AuditPage } from './pages/AuditPage'
 import { DevUIPage } from './pages/DevUIPage'
 
+const RedirectInvoice: React.FC = () => {
+  const { id } = useParams()
+  return <Navigate to={`/app/invoices/${id}`} replace />
+}
+
+const RedirectClient: React.FC = () => {
+  const { id } = useParams()
+  return <Navigate to={`/app/clients/${id}`} replace />
+}
+
 export const App: React.FC = () => {
   return (
-    <ToastProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
-          <Navbar />
-          <main className="flex-1 pb-16">
-            <Routes>
-              <Route path="/" element={<ActionCenterPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/invoices" element={<InvoicesPage />} />
-              <Route path="/invoices/new" element={<NewInvoicePage />} />
-              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="/clients" element={<ClientsPage />} />
-              <Route path="/clients/:id" element={<ClientsPage />} />
-              <Route path="/import" element={<ImportPage />} />
-              <Route path="/audit" element={<AuditPage />} />
-              <Route path="/__ui" element={<DevUIPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
-            DuePing v2.0 • Resolution-First Collections & Accounts Receivable Architecture
-          </footer>
-        </div>
-      </BrowserRouter>
-    </ToastProvider>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* App Shell Routes */}
+            <Route path="/app" element={<AppShell />}>
+              <Route index element={<ActionCenterPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="invoices/new" element={<NewInvoicePage />} />
+              <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="clients" element={<ClientsPage />} />
+              <Route path="clients/:id" element={<ClientsPage />} />
+              <Route path="import" element={<ImportPage />} />
+              <Route path="audit" element={<AuditPage />} />
+            </Route>
+
+            {/* Hidden Dev UI Page */}
+            <Route path="/__ui" element={<DevUIPage />} />
+
+            {/* Legacy route redirects to /app/... */}
+            <Route path="/" element={<Navigate to="/app" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="/invoices" element={<Navigate to="/app/invoices" replace />} />
+            <Route path="/invoices/new" element={<Navigate to="/app/invoices/new" replace />} />
+            <Route path="/invoices/:id" element={<RedirectInvoice />} />
+            <Route path="/clients" element={<Navigate to="/app/clients" replace />} />
+            <Route path="/clients/:id" element={<RedirectClient />} />
+            <Route path="/import" element={<Navigate to="/app/import" replace />} />
+            <Route path="/audit" element={<Navigate to="/app/audit" replace />} />
+
+            {/* Catch-all fallback */}
+            <Route path="*" element={<Navigate to="/app" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </QueryClientProvider>
   )
 }
 

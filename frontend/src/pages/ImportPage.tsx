@@ -38,7 +38,6 @@ export const ImportPage: React.FC = () => {
       })
       setImportResult(res)
       showSuccess(`Import complete: ${res.imported} imported, ${res.rejected} rejected.`)
-      window.dispatchEvent(new CustomEvent('dueping:refresh'))
     } catch (err: unknown) {
       showError(err instanceof Error ? err.message : String(err))
     } finally {

@@ -390,3 +390,11 @@ export interface NotificationRead {
   created_at: string
   is_read: boolean
 }
+
+export interface HandlerFailureRead {
+  id: string
+  occurred_at: string
+  event_type: string
+  handler: string
+  error: string
+}

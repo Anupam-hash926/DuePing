@@ -69,7 +69,6 @@ export const Navbar: React.FC = () => {
       const res = await apiClient.put<SimulatedDateRead>('/system/today', { date: inputDate })
       setDateInfo(res)
       showSuccess(`Simulated date set to ${formatDate(res.today)}`)
-      window.dispatchEvent(new CustomEvent('dueping:refresh'))
     } catch (err: unknown) {
       showError(err instanceof Error ? err.message : String(err))
     }
@@ -81,7 +80,6 @@ export const Navbar: React.FC = () => {
       setDateInfo(res)
       setInputDate(res.today)
       showSuccess(`Returned to real date: ${formatDate(res.today)}`)
-      window.dispatchEvent(new CustomEvent('dueping:refresh'))
     } catch (err: unknown) {
       showError(err instanceof Error ? err.message : String(err))
     }
@@ -94,7 +92,6 @@ export const Navbar: React.FC = () => {
       showSuccess(
         `Daily check completed: ${summary.invoices_checked} invoices checked, ${summary.promises_missed} promises missed, ${summary.newly_overdue} newly overdue.`
       )
-      window.dispatchEvent(new CustomEvent('dueping:refresh'))
     } catch (err: unknown) {
       showError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -121,7 +118,6 @@ export const Navbar: React.FC = () => {
       await apiClient.post('/system/reset-demo')
       setShowResetConfirm(false)
       showSuccess('Demo data reset successfully!')
-      window.dispatchEvent(new CustomEvent('dueping:refresh'))
     } catch (err: unknown) {
       showError(err instanceof Error ? err.message : String(err))
     }
