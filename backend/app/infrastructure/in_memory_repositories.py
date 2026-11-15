@@ -71,9 +71,14 @@ class InMemoryInvoiceRepository(InvoiceRepository):
         ]
 
     def next_invoice_sequence(self, year: int) -> int:
-        prefix = f"DP-{year}-"
-        count = sum(1 for inv in self._items.values() if inv.invoice_number.startswith(prefix))
-        return count + 1
+        import re
+        pattern = re.compile(rf"^DP-{year}-(\d+)$")
+        suffixes: list[int] = []
+        for inv in self._items.values():
+            m = pattern.match(inv.invoice_number)
+            if m:
+                suffixes.append(int(m.group(1)))
+        return 1 + max(suffixes) if suffixes else 1
 
 
 class InMemoryClientRepository(ClientRepository):

@@ -86,9 +86,14 @@ class CollectionFacade:
         phone: Optional[str] = None,
         company_name: Optional[str] = None,
     ) -> Client:
+        from app.domain.exceptions import DuplicateClient
+        norm_email = email.strip().lower()
+        if self.client_repo.find_by_email(norm_email) is not None:
+            raise DuplicateClient(f"Client with email {norm_email} already exists")
+
         client = Client(
             name=name,
-            email=email,
+            email=norm_email,
             phone=phone,
             company_name=company_name,
             created_at=self.clock.now(),
@@ -104,7 +109,13 @@ class CollectionFacade:
         phone: Optional[str] = None,
         company_name: Optional[str] = None,
     ) -> Client:
+        from app.domain.exceptions import DuplicateClient
         client = self.client_repo.get(id)
+        if email is not None:
+            norm_email = email.strip().lower()
+            existing = self.client_repo.find_by_email(norm_email)
+            if existing is not None and existing.id != id:
+                raise DuplicateClient(f"Client with email {norm_email} already exists")
         client.update_contact_details(name=name, email=email, phone=phone, company_name=company_name)
         self.client_repo.save(client)
         return client

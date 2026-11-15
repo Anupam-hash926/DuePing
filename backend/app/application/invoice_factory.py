@@ -40,14 +40,21 @@ class InvoiceFactory:
         """
         if not invoice_number:
             seq = self.invoice_repo.next_invoice_sequence(issue_date.year)
-            num = f"DP-{issue_date.year}-{seq:04d}"
+            num = ""
+            for _ in range(5):
+                candidate = f"DP-{issue_date.year}-{seq:04d}"
+                if self.invoice_repo.find_by_number(candidate) is None:
+                    num = candidate
+                    break
+                seq += 1
+            if not num:
+                raise DuplicateInvoiceNumber(f"Could not allocate unique invoice number for year {issue_date.year}")
         else:
             num = invoice_number.strip()
-
-        # Check uniqueness in repo
-        existing = self.invoice_repo.find_by_number(num)
-        if existing is not None:
-            raise DuplicateInvoiceNumber(f"Invoice number {num} already exists")
+            # Check uniqueness in repo
+            existing = self.invoice_repo.find_by_number(num)
+            if existing is not None:
+                raise DuplicateInvoiceNumber(f"Invoice number {num} already exists")
 
         return Invoice(
             invoice_number=num,

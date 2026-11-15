@@ -297,3 +297,62 @@ Negative Co,neg@co.com,2026-01-01,2026-01-15,-200,sent,
         assert client_repo.find_by_email("bob@ltd.com") is not None
         assert len(proj_repo.list_all()) == 1
         assert len(inv_repo.list_all()) == 2
+
+    def test_auto_number_after_custom_number_import(self):
+        from decimal import Decimal
+        inv_repo = InMemoryInvoiceRepository()
+        factory = InvoiceFactory(inv_repo)
+        # Import an invoice with custom number DP-2026-0002
+        inv_custom = Invoice(
+            invoice_number="DP-2026-0002",
+            client_id="c1",
+            total=Money(Decimal("100.00"), "USD"),
+            issue_date=date(2026, 1, 1),
+            due_date=date(2026, 1, 15),
+            now=NOW,
+        )
+        inv_repo.save(inv_custom)
+
+        # Factory generating a number should NOT collide with DP-2026-0002
+        inv1 = factory.create(
+            client_id="c1",
+            total=Money(Decimal("200.00"), "USD"),
+            issue_date=date(2026, 1, 1),
+            due_date=date(2026, 1, 15),
+            now=NOW,
+        )
+        inv_repo.save(inv1)
+        assert inv1.invoice_number == "DP-2026-0003"
+
+    def test_auto_number_is_monotonic(self):
+        from decimal import Decimal
+        inv_repo = InMemoryInvoiceRepository()
+        factory = InvoiceFactory(inv_repo)
+        inv1 = factory.create("c1", Money(Decimal("100.00"), "USD"), date(2026, 1, 1), date(2026, 1, 15), NOW)
+        inv_repo.save(inv1)
+        inv2 = factory.create("c1", Money(Decimal("100.00"), "USD"), date(2026, 1, 1), date(2026, 1, 15), NOW)
+        inv_repo.save(inv2)
+        inv3 = factory.create("c1", Money(Decimal("100.00"), "USD"), date(2026, 1, 1), date(2026, 1, 15), NOW)
+        inv_repo.save(inv3)
+        assert [inv1.invoice_number, inv2.invoice_number, inv3.invoice_number] == [
+            "DP-2026-0001",
+            "DP-2026-0002",
+            "DP-2026-0003",
+        ]
+
+    def test_sequence_ignores_non_matching_numbers(self):
+        from decimal import Decimal
+        inv_repo = InMemoryInvoiceRepository()
+        factory = InvoiceFactory(inv_repo)
+        inv_custom = Invoice(
+            invoice_number="INV-NW-01",
+            client_id="c1",
+            total=Money(Decimal("100.00"), "USD"),
+            issue_date=date(2026, 1, 1),
+            due_date=date(2026, 1, 15),
+            now=NOW,
+        )
+        inv_repo.save(inv_custom)
+        inv1 = factory.create("c1", Money(Decimal("200.00"), "USD"), date(2026, 1, 1), date(2026, 1, 15), NOW)
+        inv_repo.save(inv1)
+        assert inv1.invoice_number == "DP-2026-0001"

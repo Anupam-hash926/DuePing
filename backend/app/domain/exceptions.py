@@ -20,3 +20,7 @@ class EntityNotFound(DomainError):
 
 class DuplicateInvoiceNumber(DomainError):
     """Raised when an invoice number is already in use."""
+
+
+class DuplicateClient(DomainError):
+    """Raised when attempting to create or update a client with an existing email."""

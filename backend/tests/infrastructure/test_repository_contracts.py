@@ -89,6 +89,15 @@ class TestClientRepositoryContract:
         with pytest.raises(EntityNotFound):
             repo.get("nonexistent_client_id")
 
+    def test_client_repository_case_insensitive_lookup_and_unique(self, repo_bundle):
+        repo = repo_bundle["client_repo"]
+        c1 = Client(name="Case Alpha", email="alpha@test.com")
+        repo.save(c1)
+
+        # Lookup with mixed case
+        assert repo.find_by_email("ALPHA@test.com") is not None
+        assert repo.find_by_email("  alpha@test.com  ") is not None
+
 
 # ── Project Repository Contract ───────────────────────────────────────────────
 
@@ -311,3 +320,34 @@ class TestAuxiliaryRepositoriesContract:
         assert repo.get("custom_key", "default_val") == "default_val"
         repo.set("custom_key", "stored_val")
         assert repo.get("custom_key") == "stored_val"
+
+    def test_next_invoice_sequence_uses_max_suffix(self, repo_bundle):
+        repo = repo_bundle["invoice_repo"]
+        # Empty repo starts at 1
+        assert repo.next_invoice_sequence(2026) == 1
+
+        # Save an invoice with custom high sequence DP-2026-0005
+        from decimal import Decimal
+        inv = Invoice(
+            invoice_number="DP-2026-0005",
+            client_id="c1",
+            total=Money(Decimal("100.00"), "USD"),
+            issue_date=date(2026, 1, 1),
+            due_date=date(2026, 1, 15),
+            now=NOW,
+        )
+        repo.save(inv)
+
+        # Non-matching invoice number should be ignored
+        inv_custom = Invoice(
+            invoice_number="INV-NW-01",
+            client_id="c1",
+            total=Money(Decimal("200.00"), "USD"),
+            issue_date=date(2026, 1, 1),
+            due_date=date(2026, 1, 15),
+            now=NOW,
+        )
+        repo.save(inv_custom)
+
+        # Must return 6 (1 + max(5)) despite only 2 total invoices
+        assert repo.next_invoice_sequence(2026) == 6

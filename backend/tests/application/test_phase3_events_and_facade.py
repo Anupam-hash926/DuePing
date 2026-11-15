@@ -342,3 +342,114 @@ class TestFacadeSystemSettings:
         st = facade.get_settings()
         assert st["sender_name"] == "Anupam"
         assert st["default_currency"] == "USD"
+
+    def test_no_action_created_for_paid_invoice_on_promise_missed(self, env):
+        facade = env["facade"]
+        clock = env["clock"]
+        # Create client & invoice
+        client_dto = facade.create_client(name="Beta Corp", email="beta@corp.com")
+        inv_dto = facade.create_invoice(
+            client_id=client_dto.id,
+            total=Money.of(500),
+            issue_date=clock.today() - timedelta(days=10),
+            due_date=clock.today() - timedelta(days=5),
+        )
+        facade.send_invoice(inv_dto.id)
+        # Record a promise for tomorrow
+        tomorrow = clock.today() + timedelta(days=1)
+        facade.record_promise(inv_dto.id, promised_date=tomorrow)
+
+        # Advance simulated date past promise
+        late_date = clock.today() + timedelta(days=5)
+        facade.set_simulated_date(late_date)
+
+        # Fully pay on late date
+        facade.record_payment(
+            invoice_id=inv_dto.id,
+            amount=Money.of(500),
+            payment_date=late_date,
+            method=PaymentMethod.BANK_TRANSFER,
+        )
+
+        inv_after = facade.get_invoice(inv_dto.id)
+        assert inv_after.status.name == "PAID"
+        # No pending actions should exist for this paid invoice
+        pending_actions = [a for a in inv_after.actions if a.status.name == "PENDING"]
+        assert len(pending_actions) == 0
+
+        # Client reliability has broken promise recorded
+        client_after, _, _ = facade.get_client_summary(client_dto.id)
+        assert client_after.promises_missed == 1
+
+    def test_open_blockers_report_ignores_closed_invoices(self, env):
+        facade = env["facade"]
+        client_dto = facade.create_client(name="Gamma Corp", email="gamma@corp.com")
+        inv_dto = facade.create_invoice(
+            client_id=client_dto.id,
+            total=Money.of(500),
+            issue_date=date(2026, 1, 1),
+            due_date=date(2026, 1, 15),
+        )
+        facade.send_invoice(inv_dto.id)
+        # Raise blocker
+        facade.raise_blocker(inv_dto.id, BlockerType.MISSING_PO, "need PO")
+
+        # Report before payment shows 1 MISSING_PO blocker
+        rep1 = facade.get_dashboard()
+        assert rep1.open_blockers_by_type.get("MISSING_PO") >= 1
+
+        # Fully settle invoice
+        facade.record_payment(
+            invoice_id=inv_dto.id,
+            amount=Money.of(500),
+            payment_date=env["clock"].today(),
+            method=PaymentMethod.BANK_TRANSFER,
+        )
+
+        rep2 = facade.get_dashboard()
+        # Open blockers on closed invoice should be resolved / not counted
+        assert rep2.open_blockers_by_type.get("MISSING_PO") == 0
+
+    def test_facade_create_client_duplicate_email_raises_duplicate_client(self, env):
+        from app.domain.exceptions import DuplicateClient
+        facade = env["facade"]
+        facade.create_client(name="Original", email="same@company.com")
+        with pytest.raises(DuplicateClient):
+            facade.create_client(name="Duplicate", email="SAME@company.com")
+
+    def test_facade_update_client_duplicate_email_raises_duplicate_client(self, env):
+        from app.domain.exceptions import DuplicateClient
+        facade = env["facade"]
+        c1 = facade.create_client(name="Client 1", email="c1@company.com")
+        c2 = facade.create_client(name="Client 2", email="c2@company.com")
+        with pytest.raises(DuplicateClient):
+            facade.update_client(c2.id, email="C1@company.com")
+
+    def test_no_duplicate_overdue_action_after_refire(self, env):
+        facade = env["facade"]
+        clock = env["clock"]
+        client_dto = facade.create_client(name="Refire Corp", email="refire@corp.com")
+        inv_dto = facade.create_invoice(
+            client_id=client_dto.id,
+            total=Money.of(1000),
+            issue_date=clock.today() - timedelta(days=20),
+            due_date=clock.today() - timedelta(days=5),
+        )
+        facade.send_invoice(inv_dto.id)
+
+        # Run daily check: invoice is overdue, creates an action
+        facade.run_daily_check()
+        inv1 = facade.get_invoice(inv_dto.id)
+        overdue_actions = [a for a in inv1.actions if a.source.name == "OVERDUE" and a.status.name == "PENDING"]
+        assert len(overdue_actions) == 1
+
+        # Simulate date reset, flag reset, and refire
+        inv_domain = env["invoice_repo"].get(inv_dto.id)
+        inv_domain.overdue_notified = False
+        env["invoice_repo"].save(inv_domain)
+
+        facade.run_daily_check()
+        inv2 = facade.get_invoice(inv_dto.id)
+        overdue_actions2 = [a for a in inv2.actions if a.source.name == "OVERDUE" and a.status.name == "PENDING"]
+        # Must still be exactly 1, not duplicated!
+        assert len(overdue_actions2) == 1

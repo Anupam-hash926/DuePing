@@ -18,7 +18,7 @@ from app.application.ports import (
 )
 from app.application.reminders import ReminderFactory
 from app.domain.audit import AuditEvent, Notification
-from app.domain.enums import ActionSource, Priority
+from app.domain.enums import ActionSource, Priority, InvoiceStatus, ActionStatus
 from app.domain.events import (
     BlockerRaised, BlockerResolved, DomainEvent, InvoiceBecameOverdue,
     InvoicePaid, InvoiceWrittenOff, PaymentReceived, PromiseKept, PromiseMissed,
@@ -84,6 +84,8 @@ class ActionGenerationListener:
         if not event.invoice_id:
             return
         invoice = self.invoice_repo.get(event.invoice_id)
+        if invoice.status not in (InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED):
+            return
         # Skip if a pending action with same source_ref already exists
         if any(a.source_ref == event.blocker_id and a.status.name == "PENDING" for a in invoice.actions):
             return
@@ -105,6 +107,8 @@ class ActionGenerationListener:
         if not event.invoice_id:
             return
         invoice = self.invoice_repo.get(event.invoice_id)
+        if invoice.status not in (InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED):
+            return
         client = self.client_repo.get(event.client_id)
         p_date_str = event.promised_date.strftime("%d %b") if event.promised_date else "scheduled date"
         desc = (
@@ -126,6 +130,11 @@ class ActionGenerationListener:
         if not event.invoice_id:
             return
         invoice = self.invoice_repo.get(event.invoice_id)
+        if invoice.status not in (InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED):
+            return
+        # Skip creating an OVERDUE action if a PENDING action with source == OVERDUE already exists on that invoice
+        if any(a.source == ActionSource.OVERDUE and a.status == ActionStatus.PENDING for a in invoice.actions):
+            return
         client = self.client_repo.get(event.client_id)
         today = self.clock.today()
         tone = self.reminder_factory.tone_for(invoice, today)

@@ -267,6 +267,15 @@ def test_error_mapping_409_duplicate_invoice_number(client: TestClient):
     assert data["error"]["code"] == "DuplicateInvoiceNumber"
 
 
+def test_error_mapping_409_duplicate_client(client: TestClient):
+    """DuplicateClient translates to 409 with structured error JSON."""
+    client.post("/api/clients", json={"name": "Client Original", "email": "unique@dup.com"})
+    res = client.post("/api/clients", json={"name": "Client Duplicate", "email": "UNIQUE@dup.com"})
+    assert res.status_code == 409
+    data = res.json()
+    assert data["error"]["code"] == "DuplicateClient"
+
+
 def test_error_mapping_422_domain_validation_error(client: TestClient):
     """DomainValidationError translates to 422 with structured error JSON."""
     c = client.post("/api/clients", json={"name": "Client C", "email": "c@ex.com"}).json()

@@ -216,3 +216,54 @@ class TestPaymentPromiseUnit:
         )
         assert p.status == PromiseStatus.MISSED
         assert p.id == "abc"
+
+    def test_full_late_payment_marks_pending_promise_missed_and_penalises_reliability(self):
+        from app.domain.events import PromiseMissed, PaymentReceived, InvoicePaid
+        inv = sent_invoice(total=100_000)
+        # Promised for yesterday
+        promise = inv.record_promise(YESTERDAY, YESTERDAY - timedelta(days=1), NOW)
+        assert promise.status == PromiseStatus.PENDING
+
+        # Full payment today (later than promised date)
+        payment = make_payment(amount=100_000, days_ago=0)
+        inv.record_payment(payment, TODAY, NOW)
+
+        assert promise.status == PromiseStatus.MISSED
+        events = inv.pull_events()
+        event_types = [type(e) for e in events]
+        assert PromiseMissed in event_types
+
+    def test_full_on_time_payment_marks_promise_kept(self):
+        from app.domain.events import PromiseKept
+        inv = sent_invoice(total=100_000)
+        # Promised for tomorrow
+        promise = inv.record_promise(TOMORROW, TODAY, NOW)
+        assert promise.status == PromiseStatus.PENDING
+
+        # Full payment today (on time)
+        payment = make_payment(amount=100_000, days_ago=0)
+        inv.record_payment(payment, TODAY, NOW)
+
+        assert promise.status == PromiseStatus.KEPT
+        events = inv.pull_events()
+        event_types = [type(e) for e in events]
+        assert PromiseKept in event_types
+
+    def test_event_order_on_full_payment(self):
+        from app.domain.events import PaymentReceived, PromiseMissed, BlockerResolved, InvoicePaid
+        from app.domain.enums import BlockerType
+        inv = sent_invoice(total=100_000)
+        inv.record_promise(YESTERDAY, YESTERDAY - timedelta(days=1), NOW)
+        inv.raise_blocker(BlockerType.MISSING_PO, "Missing PO", None, NOW)
+        inv.pull_events()  # Clear initial events
+
+        payment = make_payment(amount=100_000, days_ago=0)
+        inv.record_payment(payment, TODAY, NOW)
+
+        events = inv.pull_events()
+        event_types = [type(e) for e in events]
+        # Order must be: PaymentReceived, PromiseMissed/Kept, BlockerResolved, InvoicePaid
+        assert event_types[0] == PaymentReceived
+        assert event_types[1] == PromiseMissed
+        assert event_types[2] == BlockerResolved
+        assert event_types[-1] == InvoicePaid

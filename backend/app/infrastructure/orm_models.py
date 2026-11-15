@@ -23,7 +23,7 @@ class ClientModel(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     company_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     promises_kept: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

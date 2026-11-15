@@ -189,6 +189,27 @@ class TestPaymentValidation:
         with pytest.raises(DomainValidationError):
             inv.record_payment(zero_payment, TODAY, NOW)
 
+    def test_payment_date_before_issue_date_raises(self):
+        inv = sent_invoice()
+        # Payment exactly on issue date is allowed
+        payment_equal = Payment(
+            amount=Money.of(10_000),
+            payment_date=inv.issue_date,
+            method=PaymentMethod.BANK_TRANSFER,
+            recorded_at=NOW,
+        )
+        inv.record_payment(payment_equal, TODAY, NOW)
+
+        # Payment one day before issue date must be rejected
+        payment_before = Payment(
+            amount=Money.of(10_000),
+            payment_date=inv.issue_date - timedelta(days=1),
+            method=PaymentMethod.BANK_TRANSFER,
+            recorded_at=NOW,
+        )
+        with pytest.raises(DomainValidationError, match="Payment date cannot be before the invoice issue date"):
+            inv.record_payment(payment_before, TODAY, NOW)
+
 
 # ── Overdue logic ─────────────────────────────────────────────────────────────
 
@@ -218,6 +239,19 @@ class TestOverdue:
         inv = make_invoice(due_days_ago=5)
         assert not inv.is_overdue(TODAY)
 
+    def test_flag_resets_when_not_overdue(self):
+        inv = sent_invoice(due_days_ago=5)
+        assert inv.is_overdue(TODAY)
+        assert inv.flag_overdue_if_needed(TODAY, NOW) is True
+        assert inv.overdue_notified is True
+
+        # Now evaluate on a date before due_date (not overdue)
+        before_due = inv.due_date - timedelta(days=2)
+        assert not inv.is_overdue(before_due)
+        res = inv.flag_overdue_if_needed(before_due, NOW)
+        assert res is False
+        assert inv.overdue_notified is False
+
 
 # ── update_details ────────────────────────────────────────────────────────────
 
@@ -227,6 +261,13 @@ class TestUpdateDetails:
         new_due = TODAY + timedelta(days=30)
         inv.update_details(due_date=new_due)
         assert inv.due_date == new_due
+
+    def test_due_date_change_resets_overdue_flag(self):
+        inv = make_invoice()
+        inv.overdue_notified = True
+        new_due = TODAY + timedelta(days=30)
+        inv.update_details(due_date=new_due)
+        assert inv.overdue_notified is False
 
     def test_update_total_in_draft(self):
         inv = make_invoice()

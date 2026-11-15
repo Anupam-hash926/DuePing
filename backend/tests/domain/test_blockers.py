@@ -199,3 +199,31 @@ class TestResolveBlocker:
         inv.resolve_blocker(b1.id, LATER)
         assert len(inv.open_blockers()) == 1
         assert b2 in inv.open_blockers()
+
+    def test_full_payment_resolves_open_blockers(self):
+        from tests.domain.conftest import make_payment, TODAY
+        from app.domain.enums import BlockerStatus
+        inv = sent_invoice()
+        b = inv.raise_blocker(BlockerType.MISSING_PO, "need PO", None, NOW)
+        assert b.status == BlockerStatus.OPEN
+
+        payment = make_payment(amount=100_000, days_ago=0)
+        inv.record_payment(payment, TODAY, NOW)
+
+        assert b.status == BlockerStatus.RESOLVED
+        assert len(inv.open_blockers()) == 0
+
+    def test_disputed_invoice_paid_in_full_resolves_dispute_blocker(self):
+        from tests.domain.conftest import make_payment, TODAY
+        from app.domain.enums import BlockerStatus
+        inv = sent_invoice()
+        b = inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "disputed pricing", None, NOW)
+        assert inv.status == InvoiceStatus.DISPUTED
+        assert b.status == BlockerStatus.OPEN
+
+        payment = make_payment(amount=100_000, days_ago=0)
+        inv.record_payment(payment, TODAY, NOW)
+
+        assert inv.status == InvoiceStatus.PAID
+        assert b.status == BlockerStatus.RESOLVED
+        assert len(inv.open_blockers()) == 0

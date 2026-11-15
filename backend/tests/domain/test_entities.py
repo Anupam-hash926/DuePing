@@ -58,6 +58,13 @@ class TestClientUnit:
         assert c.phone == "123456"
         assert c.company_name == "New Co"
 
+    def test_client_email_normalisation(self):
+        c = Client(name="Case Client", email="  Finance@ACME.COM  ")
+        assert c.email == "finance@acme.com"
+
+        c.update_contact_details(email="  Billing@Acme.Org  ")
+        assert c.email == "billing@acme.org"
+
     def test_update_contact_details_validation(self):
         c = Client(name="Old Name", email="old@example.com")
         with pytest.raises(DomainValidationError):

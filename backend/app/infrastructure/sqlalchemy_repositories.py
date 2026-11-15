@@ -208,11 +208,18 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             return [model_to_invoice(m) for m in models]
 
     def next_invoice_sequence(self, year: int) -> int:
+        import re
         prefix = f"DP-{year}-%"
+        pattern = re.compile(rf"^DP-{year}-(\d+)$")
         with self.session_factory() as session:
-            stmt = select(func.count(InvoiceModel.id)).where(InvoiceModel.invoice_number.like(prefix))
-            count = session.scalar(stmt) or 0
-            return count + 1
+            stmt = select(InvoiceModel.invoice_number).where(InvoiceModel.invoice_number.like(prefix))
+            numbers = session.scalars(stmt).all()
+            suffixes: list[int] = []
+            for num in numbers:
+                m = pattern.match(num)
+                if m:
+                    suffixes.append(int(m.group(1)))
+            return 1 + max(suffixes) if suffixes else 1
 
 
 class SqlAlchemyClientRepository(ClientRepository):

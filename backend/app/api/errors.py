@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from app.domain.exceptions import (
     DomainValidationError,
+    DuplicateClient,
     DuplicateInvoiceNumber,
     EntityNotFound,
     InvalidStateTransition,
@@ -43,6 +44,15 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateInvoiceNumber)
     async def duplicate_invoice_number_handler(
         request: Request, exc: DuplicateInvoiceNumber
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"error": {"code": exc.__class__.__name__, "message": str(exc)}},
+        )
+
+    @app.exception_handler(DuplicateClient)
+    async def duplicate_client_handler(
+        request: Request, exc: DuplicateClient
     ) -> JSONResponse:
         return JSONResponse(
             status_code=409,

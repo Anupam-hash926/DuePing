@@ -194,6 +194,8 @@ class Invoice:
             self._state.record_payment(self, payment)
         if not payment.is_valid():
             raise DomainValidationError("Payment amount must be positive")
+        if payment.payment_date < self.issue_date:
+            raise DomainValidationError("Payment date cannot be before the invoice issue date")
         if payment.payment_date > today:
             raise DomainValidationError("Payment date cannot be in the future")
         if payment.amount > self.outstanding():
@@ -210,21 +212,49 @@ class Invoice:
             occurred_at=now, payment_id=payment.id,
             amount=payment.amount, fully_paid=fully_paid, **self._base()
         ))
+
         if fully_paid:
+            # 1. For every PENDING promise: if on time mark KEPT, else mark MISSED
+            for promise in self.promises:
+                if promise.status == PromiseStatus.PENDING:
+                    date_ok = payment.payment_date <= promise.promised_date
+                    amount_ok = (promise.amount is None or payment.amount >= promise.amount)
+                    if date_ok and amount_ok:
+                        promise.mark_kept()
+                        self._record(PromiseKept(
+                            occurred_at=now, promise_id=promise.id,
+                            client_id=self.client_id, **self._base()
+                        ))
+                    else:
+                        promise.mark_missed()
+                        self._record(PromiseMissed(
+                            occurred_at=now, promise_id=promise.id,
+                            client_id=self.client_id, promised_date=promise.promised_date,
+                            **self._base()
+                        ))
+
+            # 2. For every open blocker: resolve and emit BlockerResolved
+            for blocker in list(self.open_blockers()):
+                blocker.resolve(now)
+                self._record(BlockerResolved(
+                    occurred_at=now, blocker_id=blocker.id, **self._base()
+                ))
+
+            # 3. InvoicePaid emitted LAST
             self.overdue_notified = False
             self._record(InvoicePaid(occurred_at=now, **self._base()))
-
-        # Check promises: mark kept if payment is on time and meets amount constraint
-        for promise in self.promises:
-            if promise.status == PromiseStatus.PENDING:
-                date_ok = payment.payment_date <= promise.promised_date
-                amount_ok = (promise.amount is None or payment.amount >= promise.amount)
-                if date_ok and amount_ok:
-                    promise.mark_kept()
-                    self._record(PromiseKept(
-                        occurred_at=now, promise_id=promise.id,
-                        client_id=self.client_id, **self._base()
-                    ))
+        else:
+            # Check promises for partial payment: mark kept if payment is on time and meets amount constraint
+            for promise in self.promises:
+                if promise.status == PromiseStatus.PENDING:
+                    date_ok = payment.payment_date <= promise.promised_date
+                    amount_ok = (promise.amount is None or payment.amount >= promise.amount)
+                    if date_ok and amount_ok:
+                        promise.mark_kept()
+                        self._record(PromiseKept(
+                            occurred_at=now, promise_id=promise.id,
+                            client_id=self.client_id, **self._base()
+                        ))
 
     def raise_blocker(
         self, type: BlockerType, description: str,
@@ -319,8 +349,11 @@ class Invoice:
         return missed
 
     def flag_overdue_if_needed(self, today: date, now: datetime) -> bool:
-        """If newly overdue, set flag and emit event. Idempotent."""
-        if self.is_overdue(today) and not self.overdue_notified:
+        """If newly overdue, set flag and emit event. If not overdue, reset flag."""
+        if not self.is_overdue(today):
+            self.overdue_notified = False
+            return False
+        if not self.overdue_notified:
             self.overdue_notified = True
             self._record(InvoiceBecameOverdue(
                 occurred_at=now, client_id=self.client_id,
@@ -420,6 +453,7 @@ class Invoice:
             if due_date < self.issue_date:
                 raise DomainValidationError("due_date must be >= issue_date")
             self.due_date = due_date
+            self.overdue_notified = False
         if total is not None:
             if not total.is_positive():
                 raise DomainValidationError("Invoice total must be positive")

@@ -40,7 +40,7 @@ class Client:
             raise DomainValidationError(f"Invalid email: {email!r}")
         self.id = id or uuid.uuid4().hex
         self.name = name.strip()
-        self.email = email
+        self.email = email.strip().lower()
         self.phone = phone
         self.company_name = company_name
         self.promises_kept = promises_kept
@@ -70,7 +70,7 @@ class Client:
         if email is not None:
             if "@" not in email:
                 raise DomainValidationError(f"Invalid email: {email!r}")
-            self.email = email
+            self.email = email.strip().lower()
         if phone is not None:
             self.phone = phone
         if company_name is not None:
