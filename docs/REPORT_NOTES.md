@@ -30,15 +30,15 @@ DuePing implements a **resolution-first follow-up system**:
 | # | Flaw in Naive / Original Design | Architectural Hazard | DuePing v2 Resolution & Concrete Classes |
 |---|---|---|---|
 | **(a)** | Relational ID fields instead of object associations (`Invoice.paymentId`, `FollowUp.invoiceId`) | Weak encapsulation; child entities manipulated independently without aggregate consistency checks. | **Composition under Aggregate Root:** `Invoice` owns `Payment`, `PaymentBlocker`, `PaymentPromise`, `FollowUp`, `SupportingDocument`, and `NextAction` collections in memory (`Invoice._payments`, etc.). |
-| **(b)** | Missing relationships & multiplicities | Ambiguous data ownership and orphaned records. | Strictly defined multiplicities: `Invoice 1 ──* Payment`, `Invoice 1 ──* PaymentBlocker`, `Invoice 1 ──* PaymentPromise`, `Client 1 ──* Project` (Section 5.1). |
+| **(b)** | Missing relationships & multiplicities | Ambiguous data ownership and orphaned records. | Strictly defined multiplicities: `Invoice 1 ──* Payment`, `Invoice 1 ──* PaymentBlocker`, `Invoice 1 ──* PaymentPromise`, `Client 1 ──* Project`. |
 | **(c)** | Stringly-typed fields (`status="paid"`, `amount=1200.50`, `priority="high"`) | Silent typos, currency mixing, IEEE-754 floating-point rounding errors. | Strongly-typed Python enums (`InvoiceStatus`, `BlockerType`, `Priority`, `Channel`, `FollowUpOutcome`) and an immutable `Money` value object backed by `Decimal` (quantised to 2 decimal places). |
 | **(d)** | Derived data stored as mutable database fields (`amountPaid`, `isOverdue`) | Synchronization drift; stale cache bugs when payments or system dates change. | **Pure Computed Properties:** `invoice.amount_paid()` sums payments; `invoice.outstanding()` subtracts paid from total; `invoice.is_overdue(today)` dynamically evaluates date and status. |
 | **(e)** | Duplicated `recordPayment` on both `Invoice` and `CollectionService` | Split responsibility; logic diverged depending on which entry point was called. | **Single Aggregate Owner:** `Invoice.record_payment(...)` is the sole mutator. Application services and facade load the aggregate, invoke `invoice.record_payment`, and persist via repository. |
-| **(f)** | Misplaced methods (`FollowUp.getFollowUpHistory()`, `getPaymentReference()`) | Entities acting as data stores / queries; violates Information Expert. | Repository pattern handles queries (`InvoiceRepository.get`, `list_active`); entities only encapsulate intrinsic behavior. |
+| **(f)** | Misplaced methods (`FollowUp.getFollowUpHistory()`, `getPaymentReference()`) | Entities acting as data stores / queries; violates Information Expert. | Repository pattern handles queries (`InvoiceRepository.find_by_id`, `list_active`); entities only encapsulate intrinsic behavior. |
 | **(g)** | Persistence code inside entities (`SupportingDocument.upload()`, `delete()`) | Couples business domain to filesystem/database I/O; untestable in isolation. | **Clean Layering:** `SupportingDocument` is a pure metadata domain entity. Storage and I/O are handled by repository adapters. |
-| **(h)** | `FollowUp` mixing communication logs with financial promises | Communication logs were coupled with promise deadlines and fulfillment states. | **Split Entity Roles:** `FollowUp` represents immutable contact history (`Channel`, `notes`, `outcome`). `PaymentPromise` is a dedicated lifecycle entity (`PENDING`, `KEPT`, `MISSED`, `SUPERSEDED`). |
+| **(h)** | `FollowUp` mixing communication logs with financial promises | Communication logs were coupled with promise deadlines and fulfillment states. | **Split Entity Roles:** `FollowUp` represents immutable contact history (`Channel`, `notes`, `outcome`). `PaymentPromise` is a dedicated lifecycle entity (`PENDING`, `KEPT`, `MISSED`). |
 | **(i)** | `CollectionService` god-class with meaningless `serviceId` | Low cohesion; bloated class mixing scheduling, reporting, SMS/Email, and CRUD. | **Decomposed Architecture:** `CollectionFacade` acts as a unified coordinator delegating to `ActionCenter`, `ResolutionPlaybook`, `ReminderFactory`, `ReportService`, and `DailyCheckService`. |
-| **(j)** | Stored report totals and hardcoded aging buckets | Discrepancies between historical ledgers and summary dashboards. | **On-Demand Computed Reports:** `ReportService.build()` dynamically computes aging buckets, debtor concentration, and monthly collection trends from aggregates. |
+| **(j)** | Stored report totals and hardcoded aging buckets | Discrepancies between historical ledgers and summary dashboards. | **On-Demand Computed Reports:** `ReportService.get_collection_report()` dynamically computes aging buckets, debtor concentration, and monthly collection trends from aggregates. |
 | **(k)** | Features without classes (reminders, action centre, dashboard) | Scattered procedural scripts. | Dedicated domain & application classes: `ReminderFactory`, `ReminderMessage` hierarchy, `ActionCenter`, `ActionCenterView`, `CollectionReport`. |
 
 ---
@@ -63,17 +63,17 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 
 | Pattern | Problem It Solved | Participating Classes | Source File | Design Principle |
 |---|---|---|---|---|
-| **State** | Eliminate complex nested `if/elif` conditionals for invoice lifecycle transitions; enforce valid state operations. | `InvoiceState` (Context/State), `DraftState`, `SentState`, `PartiallyPaidState`, `DisputedState`, `PaidState`, `WrittenOffState` | `domain/invoice_state.py` | **SRP & OCP:** Each state encapsulates its own allowed operations and transitions. |
-| **Strategy (Prioritization)** | Allow users to re-order Action Centre tasks based on different business contexts without changing task models. | `PrioritizationStrategy` (Strategy), `RiskWeightedStrategy`, `LargestAmountStrategy`, `OldestFirstStrategy`, `PrioritizationRegistry` (Context) | `application/prioritization.py` | **OCP & DIP:** Adding a new ranking formula requires only implementing `score()` and registering. |
-| **Strategy (Playbook)** | Map domain blocker types to recommended resolution actions with custom priority and deadlines. | `ResolutionStrategy` (Strategy), `MissingPOResolution`, `ApprovalResolution`, `DisputeResolution`, `ResolutionPlaybook` (Context) | `application/playbook.py` | **OCP:** Adding a blocker type requires adding a resolution strategy without modifying existing strategies. |
-| **Template Method** | Ensure all reminder communications follow a rigid professional structure while varying tone and phrasing. | `ReminderMessage` (AbstractClass), `GentleReminder`, `PoliteReminder`, `FirmReminder`, `FinalDemand` | `application/reminders.py` | **DIP & OCP:** Template defines skeleton (`subject()`, `greeting()`, `opening()`, `blocker_sentence()`, `promise_sentence()`, `call_to_action()`, `signoff()`); subclasses override steps. |
-| **Factory (Invoice)** | Centralize creation of valid invoices in DRAFT status, format sequential numbers (`DP-YYYY-NNNN`), and enforce uniqueness. | `InvoiceFactory` | `application/invoice_factory.py` | **SRP & DRY:** Shields callers from number formatting and sequence querying. |
-| **Factory (Reminder)** | Select appropriate reminder tone based on days overdue and reminder escalation level. | `ReminderFactory` | `application/reminders.py` | **SRP:** Decouples tone selection policy from message rendering. |
-| **Adapter** | Translate external CSV tabular input into domain-expected data structures with normalized headers. | `InvoiceSource` (Target), `CsvInvoiceSource` (Adapter), `csv.DictReader` (Adaptee) | `application/importing.py` | **DIP:** Importer coordinates against `InvoiceSource` interface; underlying format details are hidden. |
-| **Chain of Responsibility** | Execute ordered validation rules on imported rows, collecting all error reasons without aborting. | `RowValidator` (Handler), `RequiredFieldsValidator`, `ClientNameValidator`, `EmailValidator`, `DateFormatValidator`, `AmountValidator`, `DuplicateNumberValidator` | `application/importing.py` | **OCP & SRP:** Each validator checks exactly one invariant; validators can be reordered or extended. |
-| **Observer** | Decouple domain aggregate operations from side effects (audit logging, action generation, reliability score tracking, notifications). | `EventBus` (Subject), `DomainEvent`, `AuditLogListener`, `ActionGenerationListener`, `ReliabilityListener`, `NotificationListener` (Observers) | `application/event_bus.py`, `application/listeners.py` | **OCP & DIP:** New listeners can be plugged in without changing the domain aggregate or existing listeners. |
-| **Facade** | Provide a unified, clean interface for API routers and scripts, shielding callers from subsystem complexities. | `CollectionFacade` | `application/facade.py` | **Facade Pattern & High Cohesion:** Coordinates repositories, event bus, clock, factories, and services behind cohesive operations. |
-| **Repository** | Decouple domain and application logic from SQLAlchemy ORM and database technology. | `InvoiceRepository`, `ClientRepository`, `ProjectRepository`, `SqlAlchemyInvoiceRepository`, `InMemoryInvoiceRepository` | `application/ports.py`, `infrastructure/sqlalchemy_repositories.py` | **DIP & ISP:** Clean domain ports; database engines can be swapped without touching business rules. |
+| **State** | Eliminate complex nested `if/elif` conditionals for invoice lifecycle transitions; enforce valid state operations. | `InvoiceState` (Context/State), `DraftState`, `SentState`, `PartiallyPaidState`, `DisputedState`, `PaidState`, `WrittenOffState` | `backend/app/domain/invoice_state.py` | **SRP & OCP:** Each state encapsulates its own allowed operations and transitions. |
+| **Strategy (Prioritization)** | Allow users to re-order Action Centre tasks based on different business contexts without changing task models. | `PrioritizationStrategy` (Strategy), `AmountFirstStrategy`, `OldestFirstStrategy`, `RiskWeightedStrategy`, `PrioritizationRegistry` (Context) | `backend/app/application/prioritization.py` | **OCP & DIP:** Adding a new ranking formula requires only implementing `score()` and registering. |
+| **Strategy (Playbook)** | Map domain blocker types to recommended resolution actions with custom priority and deadlines. | `ResolutionStrategy` (Strategy), `MissingPOResolution`, `ApprovalResolution`, `DisputeResolution`, `WrongDetailsResolution`, `MissingDocumentsResolution`, `NoResponseResolution`, `OtherResolution`, `ResolutionPlaybook` (Context) | `backend/app/application/playbook.py` | **OCP:** Adding a blocker type requires adding a resolution strategy without modifying existing strategies. |
+| **Template Method** | Ensure all reminder communications follow a rigid professional structure while varying tone and phrasing. | `ReminderMessage` (AbstractClass), `PoliteReminder`, `FirmReminder`, `FinalNoticeReminder` | `backend/app/application/reminders.py` | **DIP & OCP:** Template defines skeleton (`subject()`, `greeting()`, `opening()`, `blocker_sentence()`, `promise_sentence()`, `request()`, `closing()`); subclasses override steps. |
+| **Factory (Invoice)** | Centralize creation of valid invoices in DRAFT status, format sequential numbers (`DP-YYYY-NNNN`), and enforce uniqueness. | `InvoiceFactory` | `backend/app/application/invoice_factory.py` | **SRP & DRY:** Shields callers from number formatting and sequence querying. |
+| **Factory (Reminder)** | Select appropriate reminder tone based on days overdue and client risk rating. | `ReminderFactory` | `backend/app/application/reminders.py` | **SRP:** Decouples tone selection policy from message rendering. |
+| **Adapter** | Translate external CSV tabular input into domain-expected data structures with normalized headers. | `InvoiceSource` (Target), `CsvInvoiceSource` (Adapter), `InvoiceSourceFactory` | `backend/app/application/importing.py` | **DIP:** Importer coordinates against `InvoiceSource` interface; underlying format details are hidden. |
+| **Chain of Responsibility** | Execute ordered validation rules on imported rows, collecting all error reasons without aborting. | `RowValidator` (Handler), `RequiredFieldsValidator`, `ClientDataValidator`, `DateValidator`, `AmountValidator`, `StatusValidator`, `DuplicateInvoiceNumberValidator` | `backend/app/application/importing.py` | **OCP & SRP:** Each validator checks exactly one invariant; validators can be reordered or extended. |
+| **Observer** | Decouple domain aggregate operations from side effects (audit logging, action generation, reliability score tracking, notifications). | `EventBus` (Subject), `DomainEvent`, `AuditLogListener`, `ActionGenerationListener`, `ReliabilityListener`, `NotificationListener` (Observers) | `backend/app/application/event_bus.py`, `backend/app/application/listeners.py` | **OCP & DIP:** New listeners can be plugged in without changing the domain aggregate or existing listeners. |
+| **Facade** | Provide a unified, clean interface for API routers and scripts, shielding callers from subsystem complexities. | `CollectionFacade` | `backend/app/application/facade.py` | **Facade Pattern & High Cohesion:** Coordinates repositories, event bus, clock, factories, and services behind cohesive operations. |
+| **Repository** | Decouple domain and application logic from SQLAlchemy ORM and database technology. | `InvoiceRepository`, `ClientRepository`, `ProjectRepository`, `AuditRepository`, `NotificationRepository`, `SettingsRepository`, `SqlAlchemyInvoiceRepository`, `InMemoryInvoiceRepository` | `backend/app/application/ports.py`, `backend/app/infrastructure/sqlalchemy_repositories.py` | **DIP & ISP:** Clean domain ports; database engines can be swapped without touching business rules. |
 
 ---
 
@@ -84,12 +84,12 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 - **Import Parsing vs Validation:** `CsvInvoiceSource` handles CSV dialect parsing and header normalisation. The `RowValidator` chain validates business rules. `InvoiceImporter` coordinates entity saving.
 
 ### 5.2 Open/Closed Principle (OCP)
-- **New Blocker Types:** Adding a `TAX_WITHHOLDING` blocker requires adding the enum member and a `TaxWithholdingResolution(ResolutionStrategy)` class registered on `ResolutionPlaybook`. Existing resolution strategies and `Invoice` code remain completely untouched.
-- **New Prioritisation Strategy:** Creating a `ProjectGroupedStrategy` requires creating a class inheriting `PrioritizationStrategy` and registering it with `registry.register(ProjectGroupedStrategy())`.
+- **New Blocker Types:** Adding a `BANK_DETAILS_UPDATE` blocker requires adding the enum member and a `BankDetailsUpdateResolution(ResolutionStrategy)` class registered on `ResolutionPlaybook`. Existing resolution strategies and `Invoice` code remain completely untouched.
+- **New Prioritisation Strategy:** Creating a `PromiseRiskStrategy` requires creating a class inheriting `PrioritizationStrategy` and registering it with `registry.register(PromiseRiskStrategy())`.
 
 ### 5.3 Liskov Substitution Principle (LSP)
-- **State Substitutability:** Any concrete `InvoiceState` (`SentState`, `PaidState`, `DisputedState`) can be passed to `invoice._state` without breaking callers; `allowed_operations()` and transition guards conform to the contract.
-- **Prioritization Substitutability:** `ActionCenter` invokes `strategy.score(ctx)` and `strategy.explain(ctx)` uniformly across all registered strategies.
+- **State Substitutability:** Any concrete `InvoiceState` (`SentState`, `PartiallyPaidState`, `DisputedState`) can be substituted in `invoice.state` without breaking callers; `allowed_operations()` and transition guards conform to the contract.
+- **Prioritization Substitutability:** `ActionCenter` invokes `strategy.score(ctx)` and `strategy.sort(contexts)` uniformly across all registered strategies.
 
 ### 5.4 Interface Segregation Principle (ISP)
 - **Targeted Repository Ports:** Rather than one massive `PersistencePort`, repositories are split into focused interfaces in `application/ports.py`: `InvoiceRepository`, `ClientRepository`, `ProjectRepository`, `SettingsRepository`, `AuditRepository`, `NotificationRepository`. Services only declare dependencies on the exact ports they require.
@@ -103,63 +103,87 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 ## 6. Extensibility Demonstrations (Exact Files to Add)
 
 ### 6.1 Adding a New Blocker Type (`BANK_DETAILS_UPDATE`)
-1. In [`app/domain/enums.py`](file:///Users/anupam/Documents/Projects/DuePing/backend/app/domain/enums.py): add `BANK_DETAILS_UPDATE = "BANK_DETAILS_UPDATE"` to `BlockerType`.
-2. In [`app/application/playbook.py`](file:///Users/anupam/Documents/Projects/DuePing/backend/app/application/playbook.py):
+1. In `backend/app/domain/enums.py`: add `BANK_DETAILS_UPDATE = "BANK_DETAILS_UPDATE"` to `BlockerType`.
+2. In `backend/app/application/playbook.py`:
    ```python
    class BankDetailsUpdateResolution(ResolutionStrategy):
-       blocker_type = BlockerType.BANK_DETAILS_UPDATE
-       def plan(self, ctx: PlaybookContext) -> NextAction:
-           return NextAction(
-               description=f"Send verified bank letter and cancelled cheque to {ctx.client_name}",
-               priority=Priority.HIGH,
-               due_date=ctx.today + timedelta(days=1),
-               source=ActionSource.BLOCKER,
-               created_at=ctx.blocker.created_at,
-               source_ref=ctx.blocker.id,
+       def applies_to(self, blocker_type: BlockerType) -> bool:
+           return blocker_type == BlockerType.BANK_DETAILS_UPDATE
+
+       def suggest_action(self, context: PlaybookContext) -> tuple[str, Priority, int, Channel]:
+           return (
+               f"Send verified bank letter and cancelled cheque to {context.client.name}",
+               Priority.HIGH,
+               1,
+               Channel.EMAIL,
            )
    ```
-   Add `self.register(BankDetailsUpdateResolution())` to `ResolutionPlaybook.__init__`.
-3. In [`frontend/src/pages/InvoiceDetailPage.tsx`](file:///Users/anupam/Documents/Projects/DuePing/frontend/src/pages/InvoiceDetailPage.tsx): add `<option value="BANK_DETAILS_UPDATE">Bank Details Update</option>`.
+   Add `self.strategies.append(BankDetailsUpdateResolution())` to `ResolutionPlaybook.__init__`.
+3. In `frontend/src/pages/InvoiceDetailPage.tsx`: add `<option value="BANK_DETAILS_UPDATE">Bank Details Update</option>`.
 
 ### 6.2 Adding a New Prioritisation Strategy (`PromiseRiskStrategy`)
-1. In [`app/application/prioritization.py`](file:///Users/anupam/Documents/Projects/DuePing/backend/app/application/prioritization.py):
+1. In `backend/app/application/prioritization.py`:
    ```python
    class PromiseRiskStrategy(PrioritizationStrategy):
-       key = "promise_risk"
-       label = "Promise risk first"
-       def score(self, ctx: ActionContext) -> float:
-           return (100.0 - ctx.client.reliability_score()) * 10.0 + float(ctx.invoice.outstanding().amount) / 1000.0
-       def explain(self, ctx: ActionContext) -> str:
-           return f"Client reliability is {ctx.client.reliability_score()}%; priority to mitigate broken promise risk."
-   ```
-   Add `self.register(PromiseRiskStrategy())` in `PrioritizationRegistry.__init__`.
+       @property
+       def key(self) -> str:
+           return "promise_risk"
 
-### 6.3 Adding a New Reminder Tone (`LEGAL_NOTICE`)
-1. In [`app/domain/enums.py`](file:///Users/anupam/Documents/Projects/DuePing/backend/app/domain/enums.py): add `LEGAL_NOTICE = "LEGAL_NOTICE"` to `ReminderTone`.
-2. In [`app/application/reminders.py`](file:///Users/anupam/Documents/Projects/DuePing/backend/app/application/reminders.py):
+       @property
+       def name(self) -> str:
+           return "Promise Risk First"
+
+       @property
+       def description(self) -> str:
+           return "Prioritize clients with low promise reliability scores"
+
+       def score(self, context: ActionContext) -> float:
+           return (100.0 - context.client.reliability_score()) * 10.0 + float(context.invoice.outstanding().amount) / 1000.0
+   ```
+   Register with `registry.register(PromiseRiskStrategy())` in `PrioritizationRegistry.__init__`.
+
+### 6.3 Adding a New Reminder Tone (`FINAL_NOTICE`)
+1. In `backend/app/domain/enums.py`: `ReminderTone` already defines `POLITE`, `FIRM`, `FINAL`. To add a new tone (e.g. `LEGAL_NOTICE`):
+   add `LEGAL_NOTICE = "LEGAL_NOTICE"` to `ReminderTone`.
+2. In `backend/app/application/reminders.py`:
    ```python
    class LegalNoticeReminder(ReminderMessage):
-       tone = ReminderTone.LEGAL_NOTICE
-       def subject(self, ctx: ReminderContext) -> str:
-           return f"FORMAL NOTICE OF DEFAULT: Invoice {ctx.invoice.invoice_number}"
+       @property
+       def tone(self) -> ReminderTone:
+           return ReminderTone.LEGAL_NOTICE
+
+       def greeting(self, ctx: ReminderContext) -> str:
+           return f"Dear {ctx.client_name},"
+
        def opening(self, ctx: ReminderContext) -> str:
-           return f"This constitutes formal notice of default regarding overdue balance of {ctx.invoice.outstanding().format()}."
-       def call_to_action(self, ctx: ReminderContext) -> str:
-           return "Immediate settlement is required within 48 hours to avoid legal escalation."
+           return f"This constitutes formal notice of default regarding overdue invoice {ctx.invoice_number} ({ctx.currency} {ctx.amount_due})."
+
+       def request(self, ctx: ReminderContext) -> str:
+           return "Immediate settlement is required within 48 hours to avoid formal escalation."
+
+       def closing(self, ctx: ReminderContext) -> str:
+           return "Regards,\nCredit Control Team"
    ```
-   Register in `ReminderFactory.create`.
+   Register in `ReminderFactory.create`:
+   `if tone == ReminderTone.LEGAL_NOTICE: return LegalNoticeReminder()`.
 
 ### 6.4 Adding a New Invoice Source (`JsonInvoiceSource`)
-1. In [`app/application/importing.py`](file:///Users/anupam/Documents/Projects/DuePing/backend/app/application/importing.py):
+1. In `backend/app/application/importing.py`:
    ```python
+   import json
+
    class JsonInvoiceSource(InvoiceSource):
-       def __init__(self, json_content: str) -> None: ...
-       def read_rows(self) -> Iterator[RawInvoiceRow]:
+       def __init__(self, content: str) -> None:
+           self.content = content
+
+       def read_rows(self) -> list[RawInvoiceRow]:
            items = json.loads(self.content)
+           rows: list[RawInvoiceRow] = []
            for idx, item in enumerate(items, start=1):
-               yield RawInvoiceRow(row_number=idx, data={k: str(v) for k, v in item.items()})
+               rows.append(RawInvoiceRow(row_number=idx, data={k: str(v) for k, v in item.items()}))
+           return rows
    ```
-   Add `"json"` case to `InvoiceSourceFactory.create()`.
+   Add a factory method `create_json_source(content: str)` on `InvoiceSourceFactory`.
 
 ---
 
@@ -171,13 +195,32 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 | **Action Generation** | Generic reminder emails sent to client AP address. | **Structured NextActions:** Operational tasks assigned to team members (e.g., "Request PO from Rahul"). |
 | **Payment Commitments** | "Expected Payment Date" field overwritten on invoice. | **`PaymentPromise` History:** Tracks kept vs. missed commitments, computing an empirical `reliability_score`. |
 | **Dispute Handling** | Invoice either left open or marked void. | Dedicated `DISPUTED` state; payments permitted while dispute is investigated; resolving restores state. |
-| **Prioritisation** | Simple table sorting by due date or amount. | **Contextual Ranking Strategies:** Risk-weighted, amount-first, and overdue-first with dynamic scoring. |
+| **Prioritisation** | Simple table sorting by due date or amount. | **Contextual Ranking Strategies:** Risk-weighted, amount-first, and oldest-first with dynamic scoring. |
 
 *Note: DuePing is designed as a complementary intelligence and action layer on top of accounting software, not a replacement for full general ledger bookkeeping.*
 
 ---
 
-## 8. Limitations and Future Work
+## 8. Design Decisions and Trade-Offs
+
+1. **Aggregate Boundaries and ID References Across Aggregates:**
+   - `Invoice` is the primary aggregate root. Child entities (`Payment`, `PaymentBlocker`, `PaymentPromise`, `FollowUp`, `SupportingDocument`, `NextAction`) are fully owned by `Invoice` and accessed exclusively through it.
+   - References across aggregates (e.g. between `Invoice` and `Client` or `Project`) use scalar identifier strings (`client_id`, `project_id`) rather than direct object references. This ensures each aggregate can be persisted, locked, and cached independently without traversing object graphs.
+
+2. **Derived Overdue vs. Stored State:**
+   - In traditional naive designs, "OVERDUE" is treated as an invoice state. This introduces temporal coupling and polling bugs: an invoice becomes overdue purely because the clock ticked past midnight, not because an actor executed a state command.
+   - In DuePing, `InvoiceStatus` contains only command-driven lifecycle stages (`DRAFT`, `SENT`, `PARTIALLY_PAID`, `DISPUTED`, `PAID`, `WRITTEN_OFF`). Overdue is a derived temporal query: `invoice.is_overdue(today)`. The `DailyCheckService` uses `Clock` to evaluate this condition and stage `InvoiceBecameOverdue` domain events without mutating the state machine.
+
+3. **Synchronous In-Process Domain Events:**
+   - Domain events are dispatched in-process via `EventBus`. The bus maintains an internal FIFO queue (`_queue`) and a dispatch flag (`_is_dispatching`) to prevent recursive reentrancy when listener handlers emit secondary domain events.
+   - Aggregate persistence and event listener effects are executed within the application service unit of work. While this provides synchronous guarantees for audit logging and task creation, listener side effects are designed to be eventually consistent: failures in secondary handlers do not rollback completed payments, and failed handler invocations are surfaced for monitoring (see Phase 4 C3).
+
+4. **Simple Factory Pattern for `InvoiceFactory` and `ReminderFactory`:**
+   - Rather than introducing heavyweight Abstract Factory hierarchies with unnecessary indirection, `InvoiceFactory` and `ReminderFactory` use the *Simple Factory* idiom. They encapsulate creation rules, ID/sequence formatting, and tone selection policy without exposing callers to concrete instantiation details.
+
+---
+
+## 9. Limitations and Future Work
 
 1. **Late Fee Policy Engine:** Future implementation of a `LateFeePolicy` strategy (`FixedLateFee`, `PercentageLateFee`) applied during daily check.
 2. **Channel Delivery Bridges:** Integration of concrete communication adapters (e.g., Twilio for WhatsApp, SendGrid for Email) via the Bridge/Adapter pattern.
@@ -188,9 +231,9 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 
 ---
 
-## 9. Testing Summary and Screenshot Catalog
+## 10. Testing Summary and Screenshot Catalog
 
-### 9.1 Testing Summary
+### 10.1 Testing Summary
 - **Total Tests:** 254 test cases executed and passed.
 - **Total Coverage:** **96% line coverage** across `app` package.
 - **Layers Verified:**
@@ -199,7 +242,7 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
   - `infrastructure`: 95% coverage (SQLAlchemy and in-memory repository contract suite, mappers, seed).
   - `api`: 94% coverage (Full-flow test, error mappings 404/409/422, OpenAPI contract).
 
-### 9.2 Screenshot Catalog for Documentation & Submission
+### 10.2 Screenshot Catalog for Documentation & Submission
 Capture the following screenshots following the Section 17.2 demo script:
 1. `docs/screenshots/01-action-centre.png`: Action Centre home view showing priority-ranked tasks with "Risk-weighted" strategy.
 2. `docs/screenshots/02-action-centre-amount.png`: Action Centre switched to "Largest amount first" strategy showing re-ordered cards.

@@ -5,310 +5,383 @@ classDiagram
     class Money {
         +Decimal amount
         +str currency
+        +to_minor_units() int
+        +from_minor_units(units: int, currency: str) Money
+        +is_zero() bool
+        +is_positive() bool
+        +format() str
         +__add__(other: Money) Money
         +__sub__(other: Money) Money
+        +__mul__(factor: Decimal) Money
         +__eq__(other: Money) bool
         +__lt__(other: Money) bool
-        +is_zero() bool
     }
 
     class InvoiceStatus {
         <<enumeration>>
         DRAFT
-        ISSUED
-        PARTIAL
-        OVERDUE
+        SENT
+        PARTIALLY_PAID
+        DISPUTED
         PAID
         WRITTEN_OFF
-        DISPUTED
     }
 
-    class FollowUpChannel {
+    class BlockerType {
         <<enumeration>>
-        EMAIL
-        PHONE
-        MEETING
-        LETTER
-    }
-
-    class BlockerKind {
-        <<enumeration>>
-        DISPUTE
-        AWAITING_PO
-        BUDGET_FREEZE
+        MISSING_PO
+        AWAITING_APPROVAL
+        DISPUTED_AMOUNT
         WRONG_DETAILS
+        MISSING_DOCUMENTS
+        NO_RESPONSE
         OTHER
     }
 
-    class ActionKind {
+    class BlockerStatus {
         <<enumeration>>
-        SEND_REMINDER
-        ESCALATE
-        CALL_CLIENT
-        SEND_STATEMENT
-        LEGAL_NOTICE
-        WRITE_OFF
-        RESOLVE_BLOCKER
+        OPEN
+        IN_PROGRESS
+        RESOLVED
     }
 
-    class ImportFormat {
+    class PromiseStatus {
         <<enumeration>>
-        CSV
-        JSON
+        PENDING
+        KEPT
+        MISSED
+        SUPERSEDED
+    }
+
+    class ActionStatus {
+        <<enumeration>>
+        PENDING
+        COMPLETED
+        CANCELLED
+    }
+
+    class ActionSource {
+        <<enumeration>>
+        BLOCKER
+        PROMISE_MISSED
+        OVERDUE
+        MANUAL
+    }
+
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+        CRITICAL
+    }
+
+    class Channel {
+        <<enumeration>>
+        EMAIL
+        PHONE
+        PORTAL
+        IN_PERSON
+        LETTER
+    }
+
+    class FollowUpOutcome {
+        <<enumeration>>
+        PROMISE_MADE
+        BLOCKER_IDENTIFIED
+        DISPUTE_RAISED
+        NO_ANSWER
+        LEFT_VOICEMAIL
+        INFO_PROVIDED
+        OTHER
+    }
+
+    class PaymentMethod {
+        <<enumeration>>
+        BANK_TRANSFER
+        CREDIT_CARD
+        CHECK
+        CASH
+        OTHER
+    }
+
+    class DocumentType {
+        <<enumeration>>
+        PURCHASE_ORDER
+        TIMESHEET
+        DELIVERABLE_PROOF
+        CONTRACT
+        EMAIL_CONFIRMATION
+        OTHER
+    }
+
+    class ReminderTone {
+        <<enumeration>>
+        POLITE
+        FIRM
+        FINAL
     }
 
     class Client {
-        +UUID id
+        +str id
         +str name
         +str email
         +str phone
-        +str notes
+        +str company_name
+        +int promises_kept
+        +int promises_missed
+        +datetime created_at
+        +update_contact_details(name, email, phone, company_name)
+        +record_promise_kept()
+        +record_promise_missed()
+        +reliability_score() int
+        +risk_level() str
     }
 
     class Project {
-        +UUID id
-        +UUID client_id
-        +str name
+        +str id
+        +str client_id
+        +str project_name
         +str description
+        +date start_date
+        +str status
+        +update_status(status: str)
+        +rename(name: str)
     }
 
     class Payment {
-        +UUID id
+        +str id
         +Money amount
+        +date payment_date
+        +PaymentMethod method
+        +str reference_number
         +datetime recorded_at
-        +str reference
-        +str notes
+        +is_valid() bool
+        +details() str
     }
 
     class PaymentBlocker {
-        +UUID id
-        +UUID invoice_id
-        +BlockerKind kind
+        +str id
+        +BlockerType type
         +str description
-        +datetime raised_at
+        +str assigned_to
+        +BlockerStatus status
+        +datetime created_at
         +datetime resolved_at
-        +bool is_resolved()
+        +assign_owner(owner: str)
+        +update_status(status: BlockerStatus)
+        +resolve(now: datetime)
+        +is_open() bool
     }
 
     class PaymentPromise {
-        +UUID id
-        +UUID invoice_id
+        +str id
         +date promised_date
         +Money amount
-        +datetime made_at
-        +bool kept
+        +str note
+        +PromiseStatus status
+        +datetime created_at
+        +is_overdue(today: date) bool
+        +mark_kept()
+        +mark_missed()
+        +supersede()
     }
 
     class FollowUp {
-        +UUID id
-        +UUID invoice_id
-        +FollowUpChannel channel
-        +datetime scheduled_for
-        +datetime completed_at
+        +str id
+        +datetime contact_date
+        +Channel channel
         +str notes
-        +str outcome
+        +FollowUpOutcome outcome
     }
 
     class SupportingDocument {
-        +UUID id
-        +UUID invoice_id
-        +str name
-        +str url
+        +str id
+        +DocumentType document_type
+        +str file_name
         +str file_path
         +datetime uploaded_at
+        +str file_type
+        +validate_file_type() bool
+        +details() str
     }
 
     class NextAction {
-        +UUID id
-        +UUID invoice_id
-        +ActionKind kind
+        +str id
         +str description
-        +datetime due_by
+        +Priority priority
+        +date due_date
+        +ActionStatus status
+        +ActionSource source
+        +str source_ref
         +datetime created_at
         +datetime completed_at
-        +int priority
+        +is_due_today(today: date) bool
+        +is_overdue(today: date) bool
+        +is_actionable(today: date) bool
+        +mark_completed(now: datetime)
+        +reschedule(new_date: date, today: date)
+        +cancel()
+    }
+
+    class Invoice {
+        +str id
+        +str invoice_number
+        +str client_id
+        +str project_id
+        +date issue_date
+        +date due_date
+        +Money total
+        +int reminder_level
+        +bool overdue_notified
+        +datetime created_at
+        +list~Payment~ payments
+        +list~PaymentBlocker~ blockers
+        +list~PaymentPromise~ promises
+        +list~FollowUp~ follow_ups
+        +list~SupportingDocument~ documents
+        +list~NextAction~ actions
+        +status: InvoiceStatus
+        +allowed_operations() set~str~
+        +amount_paid() Money
+        +outstanding() Money
+        +is_overdue(today: date) bool
+        +days_overdue(today: date) int
+        +open_blockers() list~PaymentBlocker~
+        +pending_promise() PaymentPromise
+        +pending_actions() list~NextAction~
+        +last_contact_date() date
+        +send(sent_at: date)
+        +record_payment(payment: Payment, today: date)
+        +raise_blocker(type, description, assigned_to) PaymentBlocker
+        +update_blocker_status(blocker_id, status)
+        +assign_blocker(blocker_id, owner)
+        +resolve_blocker(blocker_id, resolved_at)
+        +record_promise(promised_date, today, amount, note) PaymentPromise
+        +check_promises(today: date)
+        +log_follow_up(channel, notes, outcome, contact_date) FollowUp
+        +attach_document(document_type, file_name, file_path, uploaded_at) SupportingDocument
+        +remove_document(document_id)
+        +add_action(description, priority, due_date, source, now, source_ref) NextAction
+        +complete_action(action_id, now)
+        +reschedule_action(action_id, new_date, today)
+        +cancel_actions(source, source_ref)
+        +mark_reminder_sent(tone, now, recipient_email)
+        +write_off(reason, now)
+        +flag_overdue_if_needed(today: date) bool
+        +update_details(issue_date, due_date)
+        +pull_events() list~DomainEvent~
     }
 
     class InvoiceState {
         <<abstract>>
-        +label() str
-        +can_issue() bool
-        +can_record_payment() bool
-        +can_flag_overdue() bool
-        +can_write_off() bool
-        +can_dispute() bool
-        +can_resolve_dispute() bool
+        +status: InvoiceStatus*
+        +allowed_operations(invoice: Invoice)* set~str~
+        +send(invoice: Invoice, sent_at: date)
+        +record_payment(invoice: Invoice, payment: Payment, today: date)
+        +raise_blocker(invoice: Invoice, blocker: PaymentBlocker)
+        +resolve_blocker(invoice: Invoice, blocker_id: str, resolved_at: date)
+        +write_off(invoice: Invoice, reason: str, written_off_at: date)
     }
 
     class DraftState {
-        +label() str
+        +status: InvoiceStatus
+        +allowed_operations(invoice: Invoice) set~str~
+        +send(invoice: Invoice, sent_at: date)
     }
 
-    class IssuedState {
-        +label() str
+    class SentState {
+        +status: InvoiceStatus
+        +allowed_operations(invoice: Invoice) set~str~
+        +record_payment(invoice: Invoice, payment: Payment, today: date)
+        +raise_blocker(invoice: Invoice, blocker: PaymentBlocker)
+        +write_off(invoice: Invoice, reason: str, written_off_at: date)
     }
 
-    class PartialState {
-        +label() str
-    }
-
-    class OverdueState {
-        +label() str
-    }
-
-    class PaidState {
-        +label() str
-    }
-
-    class WrittenOffState {
-        +label() str
+    class PartiallyPaidState {
+        +status: InvoiceStatus
+        +allowed_operations(invoice: Invoice) set~str~
+        +record_payment(invoice: Invoice, payment: Payment, today: date)
+        +raise_blocker(invoice: Invoice, blocker: PaymentBlocker)
+        +write_off(invoice: Invoice, reason: str, written_off_at: date)
     }
 
     class DisputedState {
-        +label() str
+        +status: InvoiceStatus
+        +allowed_operations(invoice: Invoice) set~str~
+        +record_payment(invoice: Invoice, payment: Payment, today: date)
+        +resolve_blocker(invoice: Invoice, blocker_id: str, resolved_at: date)
     }
 
-    class Invoice {
-        +UUID id
-        +UUID project_id
-        +UUID client_id
-        +str invoice_number
-        +Money amount
-        +Money paid_so_far
-        +date issued_date
-        +date due_date
-        +datetime created_at
-        +datetime updated_at
-        +str notes
-        +InvoiceState _state
-        +List~Payment~ payments
-        +List~PaymentBlocker~ blockers
-        +List~PaymentPromise~ promises
-        +List~FollowUp~ follow_ups
-        +List~SupportingDocument~ documents
-        +List~NextAction~ next_actions
-        +balance_due() Money
-        +status() InvoiceStatus
-        +issue() void
-        +record_payment(amount: Money) void
-        +flag_overdue() void
-        +write_off() void
-        +dispute() void
-        +resolve_dispute() void
-        +raise_blocker(kind, description) PaymentBlocker
-        +resolve_blocker(blocker_id) void
-        +log_promise(promised_date, amount) PaymentPromise
-        +check_promises(today: date) void
-        +add_action(action: NextAction) void
-        +pull_events() List~DomainEvent~
+    class PaidState {
+        +status: InvoiceStatus
+        +allowed_operations(invoice: Invoice) set~str~
     }
 
-    class DomainEvent {
-        <<abstract>>
-        +UUID event_id
-        +datetime occurred_at
+    class WrittenOffState {
+        +status: InvoiceStatus
+        +allowed_operations(invoice: Invoice) set~str~
     }
 
-    class InvoiceIssued {
-        +UUID invoice_id
-    }
-
-    class PaymentRecorded {
-        +UUID invoice_id
-        +Money amount
-    }
-
-    class InvoicePaid {
-        +UUID invoice_id
-    }
-
-    class InvoiceOverdue {
-        +UUID invoice_id
-    }
-
-    class BlockerRaised {
-        +UUID invoice_id
-        +UUID blocker_id
-        +BlockerKind kind
-    }
-
-    class BlockerResolved {
-        +UUID invoice_id
-        +UUID blocker_id
-    }
-
-    class PromiseMade {
-        +UUID invoice_id
-        +date promised_date
-    }
-
-    class PromiseKept {
-        +UUID invoice_id
-        +UUID promise_id
-    }
-
-    class PromiseBroken {
-        +UUID invoice_id
-        +UUID promise_id
-    }
-
-    class InvoiceWrittenOff {
-        +UUID invoice_id
-    }
-
-    class InvoiceDisputed {
-        +UUID invoice_id
-    }
-
-    class AuditEntry {
-        +UUID id
-        +str entity_type
-        +UUID entity_id
-        +str action
-        +str performed_by
-        +datetime occurred_at
-        +dict metadata
-    }
-
-    %% Inheritance
     InvoiceState <|-- DraftState
-    InvoiceState <|-- IssuedState
-    InvoiceState <|-- PartialState
-    InvoiceState <|-- OverdueState
+    InvoiceState <|-- SentState
+    InvoiceState <|-- PartiallyPaidState
+    InvoiceState <|-- DisputedState
     InvoiceState <|-- PaidState
     InvoiceState <|-- WrittenOffState
-    InvoiceState <|-- DisputedState
 
-    DomainEvent <|-- InvoiceIssued
-    DomainEvent <|-- PaymentRecorded
-    DomainEvent <|-- InvoicePaid
-    DomainEvent <|-- InvoiceOverdue
-    DomainEvent <|-- BlockerRaised
-    DomainEvent <|-- BlockerResolved
-    DomainEvent <|-- PromiseMade
-    DomainEvent <|-- PromiseKept
-    DomainEvent <|-- PromiseBroken
-    DomainEvent <|-- InvoiceWrittenOff
-    DomainEvent <|-- InvoiceDisputed
-
-    %% Composition (Invoice owns its children)
+    Invoice --> InvoiceState : _state
     Invoice *-- Payment : payments
     Invoice *-- PaymentBlocker : blockers
     Invoice *-- PaymentPromise : promises
     Invoice *-- FollowUp : follow_ups
     Invoice *-- SupportingDocument : documents
-    Invoice *-- NextAction : next_actions
+    Invoice *-- NextAction : actions
 
-    %% State association
-    Invoice --> InvoiceState : _state
+    Client "1" ..> "*" Invoice : referenced by client_id
+    Client "1" ..> "*" Project : referenced by client_id
+    Project "0..1" ..> "*" Invoice : referenced by project_id
 
-    %% Value objects
-    Invoice --> Money : amount
-    Invoice --> Money : paid_so_far
-    Payment --> Money : amount
+    class DomainEvent {
+        <<abstract>>
+        +str event_id
+        +datetime occurred_at
+        +describe()* str
+    }
 
-    %% ID-based associations (not direct references)
-    Project ..> Client : client_id
-    Invoice ..> Project : project_id
-    Invoice ..> Client : client_id
+    class InvoiceSent
+    class PaymentReceived
+    class InvoicePaid
+    class InvoiceDisputed
+    class DisputeResolved
+    class InvoiceWrittenOff
+    class BlockerRaised
+    class BlockerResolved
+    class PromiseRecorded
+    class PromiseKept
+    class PromiseMissed
+    class InvoiceBecameOverdue
+    class FollowUpLogged
+    class ReminderSent
+    class DocumentAttached
+    class ActionCreated
+    class ActionCompleted
+
+    DomainEvent <|-- InvoiceSent
+    DomainEvent <|-- PaymentReceived
+    DomainEvent <|-- InvoicePaid
+    DomainEvent <|-- InvoiceDisputed
+    DomainEvent <|-- DisputeResolved
+    DomainEvent <|-- InvoiceWrittenOff
+    DomainEvent <|-- BlockerRaised
+    DomainEvent <|-- BlockerResolved
+    DomainEvent <|-- PromiseRecorded
+    DomainEvent <|-- PromiseKept
+    DomainEvent <|-- PromiseMissed
+    DomainEvent <|-- InvoiceBecameOverdue
+    DomainEvent <|-- FollowUpLogged
+    DomainEvent <|-- ReminderSent
+    DomainEvent <|-- DocumentAttached
+    DomainEvent <|-- ActionCreated
+    DomainEvent <|-- ActionCompleted
 ```

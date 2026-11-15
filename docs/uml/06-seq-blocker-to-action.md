@@ -1,48 +1,62 @@
-# UML Diagram 06 — Sequence: Blocker to Action (Raise Blocker → NextAction)
+# UML Diagram 06 — Sequence: Blocker to Action Generation
+
+Traces how raising a `PaymentBlocker` triggers the domain event pipeline and uses the `ResolutionPlaybook` to generate a targeted `NextAction`.
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as React Frontend
-    participant Router as invoices.py (FastAPI Router)
+    autonumber
+    actor User as Account Owner
     participant Facade as CollectionFacade
-    participant InvoiceRepo as InvoiceRepository
-    participant Inv as Invoice
+    participant Repo as InvoiceRepository
+    participant Inv as Invoice (Aggregate Root)
     participant Bus as EventBus
-    participant Listener as on_blocker_raised (listener)
+    participant ActGen as ActionGenerationListener
     participant Playbook as ResolutionPlaybook
-    participant Strategy as ConcreteResolutionStrategy
-    participant ActionRepo as NextActionRepository
+    participant Strategy as ResolutionStrategy
 
-    User ->> UI: Click "Raise Blocker" (kind=DISPUTE, description="...")
-    UI ->> Router: POST /api/invoices/{id}/blockers\n{ kind, description }
-    Router ->> Facade: raise_blocker(invoice_id, kind, description)
-    Facade ->> InvoiceRepo: get(invoice_id)
-    InvoiceRepo -->> Facade: invoice
-    Facade ->> Inv: raise_blocker(kind, description)
-    Inv ->> Inv: blocker = PaymentBlocker(kind, description)
-    Inv ->> Inv: blockers.append(blocker)
-    Inv ->> Inv: _events.append(BlockerRaised(invoice_id, blocker_id, kind))
-    Inv -->> Facade: blocker
-    Facade ->> InvoiceRepo: save(invoice)
-    Facade ->> Inv: pull_events()
-    Inv -->> Facade: [BlockerRaised]
-    Facade ->> Bus: publish_all([BlockerRaised])
-    Bus ->> Listener: on_blocker_raised(BlockerRaised event)
-    Listener ->> InvoiceRepo: get(invoice_id)
-    InvoiceRepo -->> Listener: invoice
-    Listener ->> Playbook: plan_for(blocker, invoice)
-    Playbook ->> Playbook: select strategy for blocker.kind
-    Playbook ->> Strategy: plan(blocker, invoice)
-    Strategy ->> Strategy: build NextAction list
-    Strategy -->> Playbook: [NextAction(RESOLVE_BLOCKER, ...), NextAction(CALL_CLIENT, ...)]
-    Playbook -->> Listener: actions
-    loop for each action
-        Listener ->> Inv: add_action(action)
-        Inv ->> Inv: next_actions.append(action)
+    User ->> Facade: raise_blocker(invoice_id, blocker_type, description, owner)
+    Facade ->> Repo: find_by_id(invoice_id)
+    Repo -->> Facade: invoice
+
+    Facade ->> Inv: raise_blocker(blocker_type, description, owner)
+    activate Inv
+    Inv ->> Inv: create PaymentBlocker(status=OPEN)
+    opt blocker_type == DISPUTED_AMOUNT
+        Inv ->> Inv: _set_state(DisputedState)
+        Inv ->> Inv: _record(InvoiceDisputed)
     end
-    Listener ->> InvoiceRepo: save(invoice)
-    Facade -->> Router: { blocker }
-    Router -->> UI: 201 Created { blocker }
-    UI -->> User: Blocker raised + actions generated ✓
+    Inv ->> Inv: _record(BlockerRaised)
+    Inv -->> Facade: blocker
+    deactivate Inv
+
+    Facade ->> Facade: _save_and_publish(invoice)
+    activate Facade
+    Facade ->> Inv: pull_events()
+    Inv -->> Facade: [BlockerRaised, ...]
+    Facade ->> Repo: save(invoice)
+
+    Facade ->> Bus: publish_all([BlockerRaised])
+    activate Bus
+    Bus ->> ActGen: on_blocker_raised(BlockerRaised)
+    activate ActGen
+
+    ActGen ->> Repo: find_by_id(invoice_id)
+    Repo -->> ActGen: invoice
+    ActGen ->> Playbook: suggest_action(context, blocker)
+    activate Playbook
+    Playbook ->> Strategy: suggest_action(context)
+    Strategy -->> Playbook: (action_text, priority, days, channel)
+    Playbook -->> ActGen: action
+    deactivate Playbook
+
+    ActGen ->> Inv: add_action(action_text, priority, due_date, channel, source, source_id)
+    Inv ->> Inv: _record(ActionCreated)
+    ActGen ->> Repo: save(invoice)
+    ActGen ->> Bus: publish_all([ActionCreated])
+    Note over Bus: ActionCreated queued and dispatched cleanly without reentrancy
+    deactivate ActGen
+    deactivate Bus
+    deactivate Facade
+
+    Facade -->> User: blocker
 ```

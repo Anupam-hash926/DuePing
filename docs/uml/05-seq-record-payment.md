@@ -1,45 +1,58 @@
 # UML Diagram 05 — Sequence: Record Payment
 
+Traces the call path when an Account Owner records a payment against an invoice via `CollectionFacade.record_payment`.
+
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as React Frontend
-    participant Router as invoices.py (FastAPI Router)
+    autonumber
+    actor User as Account Owner
     participant Facade as CollectionFacade
-    participant InvoiceRepo as InvoiceRepository
-    participant Inv as Invoice
+    participant Repo as InvoiceRepository
+    participant Inv as Invoice (Aggregate Root)
     participant State as InvoiceState
     participant Bus as EventBus
-    participant Listener as ApplicationListeners
+    participant Audit as AuditLogListener
+    participant Rel as ReliabilityListener
 
-    User ->> UI: Click "Record Payment"
-    UI ->> Router: POST /api/invoices/{id}/payments\n{ amount, currency, reference }
-    Router ->> Facade: record_payment(invoice_id, money)
-    Facade ->> InvoiceRepo: get(invoice_id)
-    InvoiceRepo -->> Facade: invoice
-    Facade ->> Inv: record_payment(money)
-    Inv ->> State: can_record_payment(money)?
-    State -->> Inv: True
-    Inv ->> Inv: payments.append(Payment(money))
-    Inv ->> Inv: paid_so_far += money
-    alt paid_so_far >= amount
-        Inv ->> State: transition → PaidState
-        Inv ->> Inv: _events.append(PaymentRecorded)
-        Inv ->> Inv: _events.append(InvoicePaid)
-    else paid_so_far < amount
-        Inv ->> State: transition → PartialState
-        Inv ->> Inv: _events.append(PaymentRecorded)
+    User ->> Facade: record_payment(invoice_id, amount, payment_date, method, reference, notes)
+    Facade ->> Repo: find_by_id(invoice_id)
+    Repo -->> Facade: invoice
+
+    Facade ->> Inv: record_payment(payment, today)
+    activate Inv
+    Inv ->> State: record_payment(self, payment, today)
+    activate State
+    alt Remaining Balance > 0
+        State ->> Inv: _set_state(PartiallyPaidState)
+    else Remaining Balance == 0
+        State ->> Inv: _set_state(PaidState)
     end
-    Inv -->> Facade: (mutated invoice with pending events)
-    Facade ->> InvoiceRepo: save(invoice)
+    deactivate State
+
+    Inv ->> Inv: _record(PaymentReceived)
+    opt Pending promise fulfilled on time
+        Inv ->> Inv: _record(PromiseKept)
+    end
+    opt Remaining Balance == 0
+        Inv ->> Inv: _record(InvoicePaid)
+    end
+    Inv -->> Facade: payment
+    deactivate Inv
+
+    Facade ->> Facade: _save_and_publish(invoice)
+    activate Facade
     Facade ->> Inv: pull_events()
-    Inv -->> Facade: [PaymentRecorded, ...]
+    Inv -->> Facade: [PaymentReceived, ...]
+    Facade ->> Repo: save(invoice)
+
     Facade ->> Bus: publish_all(events)
-    Bus ->> Listener: on_payment_recorded(event)
-    Listener ->> Listener: write audit entry
-    Bus ->> Listener: on_invoice_paid(event) [if applicable]
-    Listener ->> Listener: clear pending actions\n+ send receipt notification
-    Facade -->> Router: updated invoice
-    Router -->> UI: 200 OK { invoice }
-    UI -->> User: Payment recorded ✓
+    activate Bus
+    Note over Bus: Event queued in internal queue to prevent reentrancy
+    Bus ->> Audit: on_event(PaymentReceived)
+    Bus ->> Rel: on_payment_received(PaymentReceived)
+    Rel ->> Rel: update client metrics & reliability score
+    deactivate Bus
+    deactivate Facade
+
+    Facade -->> User: payment
 ```

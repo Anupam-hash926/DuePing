@@ -1,81 +1,59 @@
-# UML Diagram 08 — Layer Architecture
+# UML Diagram 08 — Layered Architecture & Dependency Rule
+
+Strict Clean / Onion Architecture dependency direction:
+$$\text{API} \longrightarrow \text{Application} \longrightarrow \text{Domain} \longleftarrow \text{Infrastructure}$$
+
+- **Domain Layer (`backend/app/domain/`)**: Pure Python standard library with zero external dependencies. Defines aggregates, entities, value objects, domain events, domain exceptions, and business rules.
+- **Application Layer (`backend/app/application/`)**: Coordinates use cases, domain events, and workflows via ports (interfaces). Depends only on the Domain Layer.
+- **Infrastructure Layer (`backend/app/infrastructure/`)**: Implements application ports using SQLAlchemy, SQLite, and in-memory stores. Depends on Application and Domain layers.
+- **API Layer (`backend/app/api/`)**: FastAPI routers, Pydantic DTOs, HTTP presenters, and error handlers. Depends on Application and Domain layers.
+- **Composition Root (`backend/app/api/deps.py`)**: Wires infrastructure implementations into the `CollectionFacade` singleton during application startup.
 
 ```mermaid
 flowchart TD
-    subgraph API ["API Layer (app/api/)"]
-        direction TB
-        A1["FastAPI Routers\n(clients, invoices, actions,\nreports, system, importing)"]
-        A2["Pydantic Schemas"]
-        A3["Presenters"]
-        A4["Error Handlers"]
-        A5["Dependency Injection (deps.py)"]
+    subgraph APILayer["API Layer (backend/app/api)"]
+        Routers["FastAPI Routers\n(invoices, clients, actions,\nreports, importing, system)"]
+        Schemas["Pydantic Schemas (DTOs)"]
+        Presenters["Presenters (Pure DTO mappers)"]
+        Errors["Error Mappings (404, 409, 422)"]
     end
 
-    subgraph APP ["Application Layer (app/application/)"]
-        direction TB
-        B1["CollectionFacade"]
-        B2["DailyCheckService"]
-        B3["ActionCenterService"]
-        B4["ReportsService"]
-        B5["InvoiceFactory"]
-        B6["ResolutionPlaybook\n+ Strategies"]
-        B7["ReminderTemplates"]
-        B8["ImportChain\n+ Adapters"]
-        B9["EventBus + Listeners"]
-        B10["Ports / Interfaces\n(InvoiceRepository,\nClientRepository, UnitOfWork)"]
-        B11["ClockPort"]
+    subgraph CompositionRoot["Composition Root (backend/app/api/deps.py)"]
+        Wiring["Container & Facade Factory\n(Wires ports to adapters)"]
     end
 
-    subgraph DOM ["Domain Layer (app/domain/)"]
-        direction TB
-        C1["Entities\n(Invoice, Client, Project)"]
-        C2["Value Objects\n(Money, Payment)"]
-        C3["Enums\n(InvoiceStatus, BlockerKind, ...)"]
-        C4["InvoiceState + Concrete States"]
-        C5["Domain Events"]
-        C6["Exceptions"]
-        C7["Child Entities\n(PaymentBlocker, PaymentPromise,\nFollowUp, NextAction, ...)"]
+    subgraph AppLayer["Application Layer (backend/app/application)"]
+        Facade["CollectionFacade"]
+        AppServices["Application Services\n(ActionCenter, DailyCheckService,\nReportService, InvoiceImporter)"]
+        Patterns["Pattern Implementations\n(ResolutionPlaybook, PrioritizationRegistry,\nReminderFactory, InvoiceFactory)"]
+        EventBusModule["EventBus & Listeners\n(AuditLog, ActionGeneration,\nReliability, Notification)"]
+        Ports["Ports / Interfaces\n(InvoiceRepository, ClientRepository,\nProjectRepository, AuditRepository,\nNotificationRepository, SettingsRepository, Clock)"]
     end
 
-    subgraph INFRA ["Infrastructure Layer (app/infrastructure/)"]
-        direction TB
-        D1["SQLAlchemy ORM Models"]
-        D2["SQLAlchemy Repositories\n(implements Ports)"]
-        D3["In-Memory Repositories\n(implements Ports)"]
-        D4["Mappers (ORM ↔ Domain)"]
-        D5["Database Config (db.py)"]
-        D6["Seed Script"]
+    subgraph DomainLayer["Domain Layer (backend/app/domain) [Zero External Deps]"]
+        Aggregates["Aggregate Root: Invoice"]
+        Entities["Entities: Client, Project, Payment,\nPaymentBlocker, PaymentPromise,\nFollowUp, SupportingDocument, NextAction"]
+        VO["Value Object: Money"]
+        State["State Pattern: InvoiceState & Concrete States"]
+        Events["Domain Events (InvoiceSent, PaymentReceived...)"]
+        Enums["Domain Enums (InvoiceStatus, BlockerType...)"]
     end
 
-    API -->|"calls via Facade"| APP
-    APP -->|"uses domain entities"| DOM
-    APP -->|"depends on (via ports)"| B10
-    INFRA -->|"implements"| B10
-    INFRA -->|"maps to/from"| DOM
+    subgraph InfraLayer["Infrastructure Layer (backend/app/infrastructure)"]
+        SQLAlchemyRepos["SQLAlchemy Repositories\n(SqlAlchemyInvoiceRepository, ...)"]
+        InMemoryRepos["In-Memory Repositories\n(InMemoryInvoiceRepository, ...)"]
+        ORM["SQLAlchemy ORM Models\n(InvoiceModel, ClientModel, ...)"]
+        Mappers["Mappers (Domain ↔ ORM)"]
+        DB["SQLite Database Engine"]
+        Seed["Demo Seed Script"]
+    end
 
-    style DOM fill:#d4edda,stroke:#28a745,color:#000
-    style APP fill:#d1ecf1,stroke:#17a2b8,color:#000
-    style API fill:#fff3cd,stroke:#ffc107,color:#000
-    style INFRA fill:#f8d7da,stroke:#dc3545,color:#000
+    APILayer --> AppLayer
+    APILayer --> DomainLayer
+    CompositionRoot --> APILayer
+    CompositionRoot --> InfraLayer
+    CompositionRoot --> AppLayer
+    InfraLayer --> Ports
+    InfraLayer --> DomainLayer
+    AppLayer --> DomainLayer
 ```
-
-## Dependency Rule
-
-> **Inner layers never import from outer layers.**
-
-| Layer | May Import From |
-|-------|----------------|
-| Domain | stdlib only — no FastAPI, SQLAlchemy, Pydantic |
-| Application | Domain (entities, events, exceptions) |
-| Infrastructure | Domain + Application (ports only) + SQLAlchemy |
-| API | Application (Facade) + Pydantic |
-
-## Key Interfaces (Ports)
-
-| Port | Defined In | Implemented By |
-|------|-----------|----------------|
-| `InvoiceRepository` | `application/ports.py` | `SqlAlchemyInvoiceRepository`, `InMemoryInvoiceRepository` |
-| `ClientRepository` | `application/ports.py` | `SqlAlchemyClientRepository`, `InMemoryClientRepository` |
-| `ProjectRepository` | `application/ports.py` | `SqlAlchemyProjectRepository`, `InMemoryProjectRepository` |
-| `UnitOfWork` | `application/ports.py` | `SqlAlchemyUnitOfWork` |
-| `ClockPort` | `application/clock.py` | `SystemClock`, `FakeClock` (tests) |

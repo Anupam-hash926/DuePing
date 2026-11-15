@@ -1,62 +1,59 @@
 # UML Diagram 07 — Sequence: Daily Check
 
+Traces how `DailyCheckService` evaluates active invoices against `Clock.today()`, detecting newly overdue invoices, breached promises, and aging blockers.
+
 ```mermaid
 sequenceDiagram
-    participant Scheduler as ⏰ Scheduler (cron / API call)
-    participant Router as system.py (FastAPI Router)
+    autonumber
+    actor Scheduler as Scheduler (simulated)
     participant Facade as CollectionFacade
-    participant DailyCheck as DailyCheckService
-    participant Clock as SystemClock
-    participant InvoiceRepo as InvoiceRepository
-    participant Inv as Invoice
+    participant Daily as DailyCheckService
+    participant Clock as Clock
+    participant Repo as InvoiceRepository
+    participant Inv as Invoice (Aggregate Root)
     participant Bus as EventBus
-    participant L1 as on_invoice_overdue (listener)
-    participant L2 as on_promise_broken (listener)
-    participant Reminder as ReminderFactory + ReminderTemplate
+    participant Rel as ReliabilityListener
+    participant Notif as NotificationListener
+    participant ActGen as ActionGenerationListener
 
-    Scheduler ->> Router: POST /api/system/daily-check
-    Router ->> Facade: run_daily_check()
-    Facade ->> DailyCheck: run()
-    DailyCheck ->> Clock: today()
-    Clock -->> DailyCheck: date
+    Scheduler ->> Facade: run_daily_check()
+    Facade ->> Daily: run()
+    activate Daily
+    Daily ->> Clock: today()
+    Clock -->> Daily: current_date
 
-    DailyCheck ->> InvoiceRepo: list_all()
-    InvoiceRepo -->> DailyCheck: [invoice1, invoice2, ...]
+    Daily ->> Repo: list_active()
+    Repo -->> Daily: [invoice_1, invoice_2, ...]
 
-    loop for each active invoice
-        DailyCheck ->> Inv: flag_overdue_if_needed(today)
-        alt today > due_date AND status not PAID/WRITTEN_OFF
-            Inv ->> Inv: transition → OverdueState
-            Inv ->> Inv: _events.append(InvoiceOverdue)
+    loop For each active invoice
+        Daily ->> Inv: flag_overdue_if_needed(current_date)
+        opt today > due_date and not overdue_notified
+            Inv ->> Inv: overdue_notified = True
+            Inv ->> Inv: _record(InvoiceBecameOverdue)
         end
 
-        DailyCheck ->> Inv: check_promises(today)
-        loop for each pending promise
-            alt today > promised_date AND invoice not PAID
-                Inv ->> Inv: promise.kept = False
-                Inv ->> Inv: _events.append(PromiseBroken)
-            else today <= promised_date AND invoice PAID
-                Inv ->> Inv: promise.kept = True
-                Inv ->> Inv: _events.append(PromiseKept)
-            end
+        Daily ->> Inv: check_promises(current_date)
+        opt pending promise due_date < current_date
+            Inv ->> Inv: promise.mark_missed()
+            Inv ->> Inv: _record(PromiseMissed)
         end
 
-        DailyCheck ->> InvoiceRepo: save(invoice)
-        DailyCheck ->> Inv: pull_events()
-        Inv -->> DailyCheck: [InvoiceOverdue?, PromiseBroken?]
-        DailyCheck ->> Bus: publish_all(events)
-
-        Bus ->> L1: on_invoice_overdue(event) [if present]
-        L1 ->> Reminder: ReminderFactory.for_invoice(invoice)
-        Reminder -->> L1: FirmSecondReminderTemplate (or appropriate)
-        L1 ->> Reminder: send_reminder(invoice)
-
-        Bus ->> L2: on_promise_broken(event) [if present]
-        L2 ->> L2: generate NextAction(CALL_CLIENT)\n+ append to invoice
-        L2 ->> InvoiceRepo: save(invoice)
+        opt events generated
+            Daily ->> Inv: pull_events()
+            Inv -->> Daily: [InvoiceBecameOverdue, PromiseMissed]
+            Daily ->> Repo: save(invoice)
+            Daily ->> Bus: publish_all(events)
+            activate Bus
+            Bus ->> Rel: on_promise_missed(PromiseMissed)
+            Rel ->> Rel: client.record_broken_promise()
+            Bus ->> Notif: on_promise_missed(PromiseMissed)
+            Bus ->> ActGen: on_promise_missed(PromiseMissed)
+            ActGen ->> Inv: add_action("Follow up on broken promise", CRITICAL)
+            deactivate Bus
+        end
     end
 
-    DailyCheck -->> Facade: { checked: N, overdue_flagged: M, promises_evaluated: K }
-    Facade -->> Router: summary
-    Router -->> Scheduler: 200 OK { summary }
+    Daily -->> Facade: DailyCheckSummary
+    deactivate Daily
+    Facade -->> Scheduler: DailyCheckSummary
 ```

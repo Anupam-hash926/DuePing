@@ -1,333 +1,440 @@
 # UML Diagram 03 — Design Patterns
 
-## Pattern 1: State (Invoice Lifecycle)
+### 1. State Pattern (Invoice Lifecycle)
+
+Encapsulates invoice behavior and allowed operations across its lifecycle stages. Note that *Overdue* is a temporal projection (`is_overdue(today)`), not a separate state class.
 
 ```mermaid
 classDiagram
+    class Invoice {
+        +InvoiceState _state
+        +allowed_operations() set~str~
+        +send(sent_at: date)
+        +record_payment(payment: Payment, today: date)
+        +raise_blocker(type, description, assigned_to)
+        +resolve_blocker(blocker_id, resolved_at)
+        +write_off(reason, now)
+    }
+
     class InvoiceState {
         <<abstract>>
-        +label() str
-        +can_issue() bool
-        +can_record_payment() bool
-        +can_flag_overdue() bool
-        +can_write_off() bool
-        +can_dispute() bool
+        +status: InvoiceStatus*
+        +allowed_operations(invoice: Invoice)* set~str~
+        +send(invoice: Invoice, sent_at: date)
+        +record_payment(invoice: Invoice, payment: Payment, today: date)
+        +raise_blocker(invoice: Invoice, blocker: PaymentBlocker)
+        +resolve_blocker(invoice: Invoice, blocker_id: str, resolved_at: date)
+        +write_off(invoice: Invoice, reason: str, written_off_at: date)
     }
 
-    class DraftState { +label() str }
-    class IssuedState { +label() str }
-    class PartialState { +label() str }
-    class OverdueState { +label() str }
-    class PaidState { +label() str }
-    class WrittenOffState { +label() str }
-    class DisputedState { +label() str }
-
-    class Invoice {
-        -InvoiceState _state
-        +issue() void
-        +record_payment() void
-        +flag_overdue() void
-    }
+    class DraftState { +allowed_operations() set~str~ }
+    class SentState { +allowed_operations() set~str~ }
+    class PartiallyPaidState { +allowed_operations() set~str~ }
+    class DisputedState { +allowed_operations() set~str~ }
+    class PaidState { +allowed_operations() set~str~ }
+    class WrittenOffState { +allowed_operations() set~str~ }
 
     InvoiceState <|-- DraftState
-    InvoiceState <|-- IssuedState
-    InvoiceState <|-- PartialState
-    InvoiceState <|-- OverdueState
+    InvoiceState <|-- SentState
+    InvoiceState <|-- PartiallyPaidState
+    InvoiceState <|-- DisputedState
     InvoiceState <|-- PaidState
     InvoiceState <|-- WrittenOffState
-    InvoiceState <|-- DisputedState
-    Invoice --> InvoiceState : delegates to
+
+    Invoice --> InvoiceState : _state
 ```
 
 ---
 
-## Pattern 2: Strategy — Prioritization
+### 2. Strategy Pattern (Action Prioritization)
+
+Allows hot-swapping ranking algorithms for sorting high-priority tasks in the Action Centre.
 
 ```mermaid
 classDiagram
+    class ActionContext {
+        +NextAction action
+        +Invoice invoice
+        +Client client
+        +date today
+    }
+
     class PrioritizationStrategy {
         <<abstract>>
-        +score(invoice) int
+        +key: str*
+        +label: str*
+        +score(ctx: ActionContext)* float
+        +explain(ctx: ActionContext)* str
     }
 
-    class OverdueFirstStrategy {
-        +score(invoice) int
+    class AmountFirstStrategy {
+        +key: str = "amount_first"
+        +label: str = "Largest amount first"
+        +score(ctx: ActionContext) float
+        +explain(ctx: ActionContext) str
     }
 
-    class AmountDescStrategy {
-        +score(invoice) int
+    class OldestFirstStrategy {
+        +key: str = "oldest_first"
+        +label: str = "Oldest overdue first"
+        +score(ctx: ActionContext) float
+        +explain(ctx: ActionContext) str
     }
 
-    class BrokenPromiseStrategy {
-        +score(invoice) int
+    class RiskWeightedStrategy {
+        +key: str = "risk_weighted"
+        +label: str = "Risk-weighted"
+        +score(ctx: ActionContext) float
+        +explain(ctx: ActionContext) str
     }
 
-    class CompositePrioritizationStrategy {
-        -List~PrioritizationStrategy~ strategies
-        +score(invoice) int
+    class PrioritizationRegistry {
+        -dict _strategies
+        +register(strategy: PrioritizationStrategy)
+        +get(key: str) PrioritizationStrategy
+        +list_all() list~PrioritizationStrategy~
     }
 
-    class ActionCenterService {
-        -PrioritizationStrategy strategy
-        +get_actions() List
-    }
-
-    PrioritizationStrategy <|-- OverdueFirstStrategy
-    PrioritizationStrategy <|-- AmountDescStrategy
-    PrioritizationStrategy <|-- BrokenPromiseStrategy
-    PrioritizationStrategy <|-- CompositePrioritizationStrategy
-    CompositePrioritizationStrategy o-- PrioritizationStrategy
-    ActionCenterService --> PrioritizationStrategy : uses
+    PrioritizationStrategy <|-- AmountFirstStrategy
+    PrioritizationStrategy <|-- OldestFirstStrategy
+    PrioritizationStrategy <|-- RiskWeightedStrategy
+    PrioritizationRegistry o-- PrioritizationStrategy
 ```
 
 ---
 
-## Pattern 3: Strategy — Resolution Playbook
+### 3. Strategy Pattern (Resolution Playbook)
+
+Maps the root cause of an unpaid invoice (the `PaymentBlocker`) to an optimal next recovery action.
 
 ```mermaid
 classDiagram
+    class PlaybookContext {
+        +PaymentBlocker blocker
+        +str invoice_number
+        +str client_name
+        +str company_name
+        +date today
+    }
+
     class ResolutionStrategy {
         <<abstract>>
-        +plan(blocker, invoice) List~NextAction~
+        +blocker_type: BlockerType*
+        +plan(ctx: PlaybookContext)* NextAction
     }
 
-    class DisputeResolutionStrategy {
-        +plan(blocker, invoice) List~NextAction~
-    }
-
-    class AwaitingPOResolutionStrategy {
-        +plan(blocker, invoice) List~NextAction~
-    }
-
-    class BudgetFreezeResolutionStrategy {
-        +plan(blocker, invoice) List~NextAction~
-    }
-
-    class WrongDetailsResolutionStrategy {
-        +plan(blocker, invoice) List~NextAction~
-    }
-
-    class DefaultResolutionStrategy {
-        +plan(blocker, invoice) List~NextAction~
-    }
+    class MissingPOResolution { +plan(ctx: PlaybookContext) NextAction }
+    class ApprovalResolution { +plan(ctx: PlaybookContext) NextAction }
+    class DisputeResolution { +plan(ctx: PlaybookContext) NextAction }
+    class WrongDetailsResolution { +plan(ctx: PlaybookContext) NextAction }
+    class MissingDocumentsResolution { +plan(ctx: PlaybookContext) NextAction }
+    class NoResponseResolution { +plan(ctx: PlaybookContext) NextAction }
+    class OtherResolution { +plan(ctx: PlaybookContext) NextAction }
 
     class ResolutionPlaybook {
-        -Dict strategies
-        +plan_for(blocker, invoice) List~NextAction~
+        -dict _strategies
+        +register(strategy: ResolutionStrategy)
+        +plan_for(blocker, invoice, client, today) NextAction
     }
 
-    ResolutionStrategy <|-- DisputeResolutionStrategy
-    ResolutionStrategy <|-- AwaitingPOResolutionStrategy
-    ResolutionStrategy <|-- BudgetFreezeResolutionStrategy
-    ResolutionStrategy <|-- WrongDetailsResolutionStrategy
-    ResolutionStrategy <|-- DefaultResolutionStrategy
-    ResolutionPlaybook --> ResolutionStrategy : selects & delegates
+    ResolutionStrategy <|-- MissingPOResolution
+    ResolutionStrategy <|-- ApprovalResolution
+    ResolutionStrategy <|-- DisputeResolution
+    ResolutionStrategy <|-- WrongDetailsResolution
+    ResolutionStrategy <|-- MissingDocumentsResolution
+    ResolutionStrategy <|-- NoResponseResolution
+    ResolutionStrategy <|-- OtherResolution
+
+    ResolutionPlaybook o-- ResolutionStrategy
 ```
 
 ---
 
-## Pattern 4: Template Method + Factory (Reminders)
+### 4. Template Method + Factory (Adaptive Reminders)
+
+Defines a rigid communication structure with polymorphic variation across tones. `ReminderFactory` acts as a Simple Factory.
 
 ```mermaid
 classDiagram
-    class ReminderTemplate {
+    class ReminderContext {
+        +str client_name
+        +str company_name
+        +str invoice_number
+        +Money outstanding
+        +date due_date
+        +int days_overdue
+        +date today
+        +str sender_name
+        +list open_blocker_types
+        +date missed_promise_date
+    }
+
+    class GeneratedReminder {
+        +ReminderTone tone
+        +str subject
+        +str body
+    }
+
+    class ReminderMessage {
         <<abstract>>
-        +send_reminder(invoice) void
-        +compose_message(invoice) str*
-        +select_channel(invoice) str*
-        +dispatch(invoice, channel, msg) void
-        +post_send_hook(invoice) void
+        +tone: ReminderTone*
+        +response_days: int
+        +subject(ctx: ReminderContext)* str
+        +greeting(ctx: ReminderContext)* str
+        +opening(ctx: ReminderContext)* str
+        +blocker_section(ctx: ReminderContext) str
+        +promise_section(ctx: ReminderContext) str
+        +request(ctx: ReminderContext)* str
+        +closing(ctx: ReminderContext)* str
+        +render(ctx: ReminderContext) str
     }
 
-    class PoliteFirstReminderTemplate {
-        +compose_message(invoice) str
-        +select_channel(invoice) str
+    class PoliteReminder {
+        +tone: ReminderTone = POLITE
+        +subject(ctx: ReminderContext) str
+        +greeting(ctx: ReminderContext) str
+        +opening(ctx: ReminderContext) str
+        +request(ctx: ReminderContext) str
+        +closing(ctx: ReminderContext) str
     }
 
-    class FirmSecondReminderTemplate {
-        +compose_message(invoice) str
-        +select_channel(invoice) str
+    class FirmReminder {
+        +tone: ReminderTone = FIRM
+        +subject(ctx: ReminderContext) str
+        +greeting(ctx: ReminderContext) str
+        +opening(ctx: ReminderContext) str
+        +request(ctx: ReminderContext) str
+        +closing(ctx: ReminderContext) str
     }
 
-    class FinalNoticeReminderTemplate {
-        +compose_message(invoice) str
-        +select_channel(invoice) str
+    class FinalNoticeReminder {
+        +tone: ReminderTone = FINAL
+        +subject(ctx: ReminderContext) str
+        +greeting(ctx: ReminderContext) str
+        +opening(ctx: ReminderContext) str
+        +request(ctx: ReminderContext) str
+        +closing(ctx: ReminderContext) str
     }
 
     class ReminderFactory {
-        +for_invoice(invoice) ReminderTemplate
+        +create(tone: ReminderTone) ReminderMessage
+        +select_tone(days_overdue: int, reminder_level: int) ReminderTone
+        +build_context(...) ReminderContext
     }
 
-    ReminderTemplate <|-- PoliteFirstReminderTemplate
-    ReminderTemplate <|-- FirmSecondReminderTemplate
-    ReminderTemplate <|-- FinalNoticeReminderTemplate
-    ReminderFactory ..> ReminderTemplate : creates
+    ReminderMessage <|-- PoliteReminder
+    ReminderMessage <|-- FirmReminder
+    ReminderMessage <|-- FinalNoticeReminder
+    ReminderFactory ..> ReminderMessage : instantiates
 ```
 
 ---
 
-## Pattern 5: Adapter + Chain of Responsibility (Import)
+### 5. Adapter + Chain of Responsibility (CSV Import)
+
+Adapts external raw files into structured domain inputs and pipes each row through an extensible chain of validators.
 
 ```mermaid
 classDiagram
-    class ImportAdapter {
+    class RawInvoiceRow {
+        +int row_number
+        +dict data
+    }
+
+    class InvoiceSource {
+        <<interface>>
+        +read_rows()* list~RawInvoiceRow~
+    }
+
+    class CsvInvoiceSource {
+        -str content
+        +read_rows() list~RawInvoiceRow~
+    }
+
+    class InvoiceSourceFactory {
+        +create_csv_source(content: str) InvoiceSource
+    }
+
+    class ValidationContext {
+        +ClientRepository client_repo
+        +InvoiceRepository invoice_repo
+        +date today
+    }
+
+    class RowValidator {
         <<abstract>>
-        +can_handle(format: str) bool
-        +parse(raw_data: bytes) List~dict~
+        -RowValidator _next
+        +set_next(validator: RowValidator) RowValidator
+        +validate(row: RawInvoiceRow, context: ValidationContext) list~str~
     }
 
-    class CsvImportAdapter {
-        +can_handle(format: str) bool
-        +parse(raw_data: bytes) List~dict~
+    class RequiredFieldsValidator
+    class ClientDataValidator
+    class DateValidator
+    class AmountValidator
+    class StatusValidator
+    class DuplicateInvoiceNumberValidator
+
+    class InvoiceImporter {
+        -InvoiceSourceFactory source_factory
+        -RowValidator validator_chain
+        +import_from_csv(csv_content: str, context: ValidationContext) ImportResult
     }
 
-    class JsonImportAdapter {
-        +can_handle(format: str) bool
-        +parse(raw_data: bytes) List~dict~
-    }
+    InvoiceSource <|.. CsvInvoiceSource
+    InvoiceSourceFactory ..> CsvInvoiceSource : creates
 
-    class ImportChain {
-        -List~ImportAdapter~ adapters
-        +handle(raw_data, format_hint) List~dict~
-    }
+    RowValidator <|-- RequiredFieldsValidator
+    RowValidator <|-- ClientDataValidator
+    RowValidator <|-- DateValidator
+    RowValidator <|-- AmountValidator
+    RowValidator <|-- StatusValidator
+    RowValidator <|-- DuplicateInvoiceNumberValidator
 
-    ImportAdapter <|-- CsvImportAdapter
-    ImportAdapter <|-- JsonImportAdapter
-    ImportChain o-- ImportAdapter : chain of
+    InvoiceImporter o-- InvoiceSource
+    InvoiceImporter o-- RowValidator
 ```
 
 ---
 
-## Pattern 6: Observer (EventBus + Listeners)
+### 6. Observer Pattern (Domain Event Bus)
+
+Decouples domain aggregate changes from side effects (audit logging, action generation, reliability updates, and notifications).
 
 ```mermaid
 classDiagram
-    class EventBus {
-        -Dict listeners
-        +subscribe(event_type, handler) void
-        +publish(event) void
-        +publish_all(events) void
-    }
-
     class DomainEvent {
         <<abstract>>
+        +str event_id
+        +datetime occurred_at
+        +describe()* str
     }
 
-    class on_invoice_issued {
-        <<listener>>
-        +handle(event: InvoiceIssued) void
+    class EventBus {
+        -dict _subscribers
+        -list _global_subscribers
+        -list _queue
+        -bool _is_dispatching
+        +subscribe(event_type: type, handler: callable)
+        +subscribe_all(handler: callable)
+        +publish(event: DomainEvent)
+        +publish_all(events: list~DomainEvent~)
     }
 
-    class on_blocker_raised {
-        <<listener>>
-        +handle(event: BlockerRaised) void
+    class AuditLogListener {
+        -AuditRepository audit_repo
+        +on_event(event: DomainEvent)
     }
 
-    class on_promise_broken {
-        <<listener>>
-        +handle(event: PromiseBroken) void
+    class ActionGenerationListener {
+        -InvoiceRepository invoice_repo
+        -ResolutionPlaybook playbook
+        +on_blocker_raised(event: BlockerRaised)
+        +on_blocker_resolved(event: BlockerResolved)
+        +on_promise_missed(event: PromiseMissed)
+        +on_invoice_became_overdue(event: InvoiceBecameOverdue)
     }
 
-    class on_invoice_overdue {
-        <<listener>>
-        +handle(event: InvoiceOverdue) void
+    class ReliabilityListener {
+        -ClientRepository client_repo
+        -InvoiceRepository invoice_repo
+        +on_payment_received(event: PaymentReceived)
+        +on_promise_kept(event: PromiseKept)
+        +on_promise_missed(event: PromiseMissed)
     }
 
-    EventBus --> DomainEvent : publishes
-    EventBus --> on_invoice_issued : notifies
-    EventBus --> on_blocker_raised : notifies
-    EventBus --> on_promise_broken : notifies
-    EventBus --> on_invoice_overdue : notifies
+    class NotificationListener {
+        -NotificationRepository notification_repo
+        +on_promise_missed(event: PromiseMissed)
+        +on_invoice_became_overdue(event: InvoiceBecameOverdue)
+        +on_blocker_raised(event: BlockerRaised)
+    }
+
+    EventBus o-- DomainEvent
+    EventBus ..> AuditLogListener : notifies
+    EventBus ..> ActionGenerationListener : notifies
+    EventBus ..> ReliabilityListener : notifies
+    EventBus ..> NotificationListener : notifies
 ```
 
 ---
 
-## Pattern 7: Facade (CollectionFacade)
+### 7. Facade Pattern
+
+Unifies application operations behind a cohesive, single-point entry for API routers and external clients.
 
 ```mermaid
 classDiagram
     class CollectionFacade {
-        +create_client(data) Client
-        +get_invoice(id) Invoice
-        +issue_invoice(id) void
-        +record_payment(id, amount) void
-        +raise_blocker(id, kind, desc) void
-        +log_promise(id, date) void
-        +get_action_center() List
-        +run_daily_check() dict
-        +aging_report() dict
-        +import_data(raw, format) dict
+        -InvoiceRepository invoice_repo
+        -ClientRepository client_repo
+        -ProjectRepository project_repo
+        -AuditRepository audit_repo
+        -NotificationRepository notification_repo
+        -SettingsRepository settings_repo
+        -Clock clock
+        -EventBus event_bus
+        -ResolutionPlaybook playbook
+        -PrioritizationRegistry registry
+        -ReminderFactory reminder_factory
+        -InvoiceImporter importer
+        -ReportService report_service
+        -ActionCenter action_center
+        -DailyCheckService daily_check_service
+        +create_invoice(...)
+        +send_invoice(...)
+        +record_payment(...)
+        +raise_blocker(...)
+        +resolve_blocker(...)
+        +record_promise(...)
+        +run_daily_check(...)
+        +get_action_center(...)
+        +get_dashboard(...)
+        +import_invoices(...)
     }
-
-    class ClientRepository
-    class InvoiceRepository
-    class ActionCenterService
-    class DailyCheckService
-    class ReportsService
-    class ImportChain
-    class EventBus
-    class InvoiceFactory
-
-    CollectionFacade --> ClientRepository
-    CollectionFacade --> InvoiceRepository
-    CollectionFacade --> ActionCenterService
-    CollectionFacade --> DailyCheckService
-    CollectionFacade --> ReportsService
-    CollectionFacade --> ImportChain
-    CollectionFacade --> EventBus
-    CollectionFacade --> InvoiceFactory
 ```
 
 ---
 
-## Pattern 8: Repository (Ports + Adapters)
+### 8. Repository Pattern
+
+Decouples business domain logic from database engines and storage mechanisms.
 
 ```mermaid
 classDiagram
     class InvoiceRepository {
-        <<abstract>>
-        +get(id: UUID) Invoice
-        +save(invoice: Invoice) void
-        +list_all() List~Invoice~
+        <<interface>>
+        +save(invoice: Invoice)*
+        +find_by_id(id: str)* Invoice
+        +find_by_number(number: str)* Invoice
+        +list_all()* list~Invoice~
+        +list_active()* list~Invoice~
+        +list_by_client(client_id: str)* list~Invoice~
+        +next_invoice_sequence(year: int)* int
     }
 
-    class ClientRepository {
-        <<abstract>>
-        +get(id: UUID) Client
-        +save(client: Client) void
-        +list_all() List~Client~
+    class InMemoryInvoiceRepository {
+        -dict _invoices
+        +save(invoice: Invoice)
+        +find_by_id(id: str) Invoice
+        +find_by_number(number: str) Invoice
+        +list_all() list~Invoice~
+        +list_active() list~Invoice~
+        +list_by_client(client_id: str) list~Invoice~
+        +next_invoice_sequence(year: int) int
     }
 
     class SqlAlchemyInvoiceRepository {
         -Session session
-        +get(id: UUID) Invoice
-        +save(invoice: Invoice) void
-        +list_all() List~Invoice~
+        +save(invoice: Invoice)
+        +find_by_id(id: str) Invoice
+        +find_by_number(number: str) Invoice
+        +list_all() list~Invoice~
+        +list_active() list~Invoice~
+        +list_by_client(client_id: str) list~Invoice~
+        +next_invoice_sequence(year: int) int
     }
 
-    class InMemoryInvoiceRepository {
-        -Dict store
-        +get(id: UUID) Invoice
-        +save(invoice: Invoice) void
-        +list_all() List~Invoice~
-    }
-
-    class SqlAlchemyClientRepository {
-        -Session session
-        +get(id: UUID) Client
-        +save(client: Client) void
-        +list_all() List~Client~
-    }
-
-    class InMemoryClientRepository {
-        -Dict store
-        +get(id: UUID) Client
-        +save(client: Client) void
-        +list_all() List~Client~
-    }
-
-    InvoiceRepository <|-- SqlAlchemyInvoiceRepository
-    InvoiceRepository <|-- InMemoryInvoiceRepository
-    ClientRepository <|-- SqlAlchemyClientRepository
-    ClientRepository <|-- InMemoryClientRepository
+    InvoiceRepository <|.. InMemoryInvoiceRepository
+    InvoiceRepository <|.. SqlAlchemyInvoiceRepository
 ```

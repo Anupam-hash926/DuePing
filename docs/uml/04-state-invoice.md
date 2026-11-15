@@ -1,64 +1,29 @@
 # UML Diagram 04 — Invoice State Machine
 
+> **Important Architectural Note:**  
+> **Overdue is derived, not a stored state.** An invoice is overdue when its status is active (`SENT`, `PARTIALLY_PAID`, or `DISPUTED`), its outstanding balance is greater than zero, and the evaluation date `today > due_date` (evaluated dynamically via `invoice.is_overdue(today)`). This avoids corrupting state machines with wall-clock polling.
+
 ```mermaid
 stateDiagram-v2
     [*] --> DRAFT : create_invoice()
 
-    DRAFT --> ISSUED : issue()\n[invoice_number assigned,\nissued_date = today]
+    DRAFT --> SENT : send(sent_at)
 
-    ISSUED --> PARTIAL : record_payment(amount)\n[amount < total]
+    SENT --> PARTIALLY_PAID : record_payment() [remaining > 0]
+    SENT --> PAID : record_payment() [remaining == 0]
+    SENT --> DISPUTED : raise_blocker() [DISPUTED_AMOUNT]
+    SENT --> WRITTEN_OFF : write_off()
 
-    ISSUED --> PAID : record_payment(amount)\n[amount >= total]
+    PARTIALLY_PAID --> PARTIALLY_PAID : record_payment() [remaining > 0]
+    PARTIALLY_PAID --> PAID : record_payment() [remaining == 0]
+    PARTIALLY_PAID --> DISPUTED : raise_blocker() [DISPUTED_AMOUNT]
+    PARTIALLY_PAID --> WRITTEN_OFF : write_off()
 
-    ISSUED --> OVERDUE : flag_overdue()\n[today > due_date]
-
-    ISSUED --> DISPUTED : dispute()
-
-    PARTIAL --> PAID : record_payment(amount)\n[paid_so_far >= total]
-
-    PARTIAL --> OVERDUE : flag_overdue()\n[today > due_date]
-
-    PARTIAL --> DISPUTED : dispute()
-
-    OVERDUE --> PARTIAL : record_payment(amount)\n[amount < remaining]
-
-    OVERDUE --> PAID : record_payment(amount)\n[amount >= remaining]
-
-    OVERDUE --> WRITTEN_OFF : write_off()
-
-    OVERDUE --> DISPUTED : dispute()
-
-    DISPUTED --> ISSUED : resolve_dispute()\n[no payments yet]
-
-    DISPUTED --> PARTIAL : resolve_dispute()\n[partial payments exist]
-
-    DISPUTED --> WRITTEN_OFF : write_off()
+    DISPUTED --> SENT : resolve_blocker() [amount_paid == 0]
+    DISPUTED --> PARTIALLY_PAID : resolve_blocker() [amount_paid > 0]
+    DISPUTED --> PARTIALLY_PAID : record_payment() [remaining > 0]
+    DISPUTED --> PAID : record_payment() [remaining == 0]
 
     PAID --> [*]
     WRITTEN_OFF --> [*]
 ```
-
-## Transition Table
-
-| From State | Event / Guard | To State | Domain Event Fired |
-|-----------|--------------|----------|--------------------|
-| DRAFT | `issue()` | ISSUED | `InvoiceIssued` |
-| ISSUED | `record_payment()` [partial] | PARTIAL | `PaymentRecorded` |
-| ISSUED | `record_payment()` [full] | PAID | `PaymentRecorded`, `InvoicePaid` |
-| ISSUED | `flag_overdue()` | OVERDUE | `InvoiceOverdue` |
-| ISSUED | `dispute()` | DISPUTED | `InvoiceDisputed` |
-| PARTIAL | `record_payment()` [completes] | PAID | `PaymentRecorded`, `InvoicePaid` |
-| PARTIAL | `flag_overdue()` | OVERDUE | `InvoiceOverdue` |
-| PARTIAL | `dispute()` | DISPUTED | `InvoiceDisputed` |
-| OVERDUE | `record_payment()` [partial] | PARTIAL | `PaymentRecorded` |
-| OVERDUE | `record_payment()` [full] | PAID | `PaymentRecorded`, `InvoicePaid` |
-| OVERDUE | `write_off()` | WRITTEN_OFF | `InvoiceWrittenOff` |
-| OVERDUE | `dispute()` | DISPUTED | `InvoiceDisputed` |
-| DISPUTED | `resolve_dispute()` [no payments] | ISSUED | `BlockerResolved` |
-| DISPUTED | `resolve_dispute()` [partial paid] | PARTIAL | `BlockerResolved` |
-| DISPUTED | `write_off()` | WRITTEN_OFF | `InvoiceWrittenOff` |
-
-## Terminal States
-
-- **PAID** — Invoice fully collected. No further transitions.
-- **WRITTEN_OFF** — Invoice deemed uncollectable. No further transitions.

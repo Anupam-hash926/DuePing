@@ -23,9 +23,9 @@
 DuePing replaces generic calendar-based nagging with a resolution-first collections process:
 - **Root Cause Modeling:** Invoices track structured `PaymentBlocker`s (`MISSING_PO`, `AWAITING_APPROVAL`, `DISPUTED_AMOUNT`, `WRONG_DETAILS`, `MISSING_DOCUMENTS`, `NO_RESPONSE`, `OTHER`).
 - **Resolution Playbook:** Automatically maps blockers to concrete, actionable `NextAction`s.
-- **Commitment Tracking:** Manages first-class `PaymentPromise` lifecycles (`PENDING`, `KEPT`, `MISSED`, `SUPERSEDED`), empirically deriving client `reliability_score` (0–100%) and risk ratings (`LOW`, `MEDIUM`, `HIGH`).
+- **Commitment Tracking:** Manages first-class `PaymentPromise` lifecycles (`PENDING`, `KEPT`, `MISSED`), empirically deriving client `reliability_score` (0–100%) and risk ratings (`LOW`, `MEDIUM`, `HIGH`).
 - **Action Centre:** Ranks follow-up tasks using swappable prioritization strategies (`risk_weighted`, `amount_first`, `oldest_first`).
-- **Tone-Escalated Reminders:** Automatically selects and renders reminders (`GENTLE`, `POLITE`, `FIRM`, `FINAL`) mentioning blockers and broken promises.
+- **Tone-Escalated Reminders:** Automatically selects and renders reminders (`POLITE`, `FIRM`, `FINAL`) mentioning blockers and broken promises.
 
 ### Clean / Hexagonal Layer Architecture
 The project strictly enforces the dependency rule: `api → application → domain` and `infrastructure → application + domain`. The domain layer is pure Python with **zero external dependencies** (no FastAPI, SQLAlchemy, or Pydantic).
@@ -50,17 +50,17 @@ API (FastAPI) ─────────► Application (Facade, Use-cases, Eve
 
 | Pattern | Role in System | Key Classes | Location |
 |---|---|---|---|
-| **State** | Manages invoice state transitions (`DRAFT`, `SENT`, `PARTIALLY_PAID`, `DISPUTED`, `PAID`, `WRITTEN_OFF`) and state-gated operations. | `InvoiceState`, `DraftState`, `SentState`, `DisputedState`, etc. | `domain/invoice_state.py` |
-| **Strategy (Prioritization)** | Swappable Action Centre ranking algorithms. | `PrioritizationStrategy`, `RiskWeightedStrategy`, `LargestAmountStrategy`, `OldestFirstStrategy` | `application/prioritization.py` |
-| **Strategy (Playbook)** | Maps structured blocker reasons to recommended next actions. | `ResolutionStrategy`, `MissingPOResolution`, `ApprovalResolution`, `DisputeResolution`, etc. | `application/playbook.py` |
-| **Template Method** | Consistent reminder structure with tone-specific copy. | `ReminderMessage`, `GentleReminder`, `PoliteReminder`, `FirmReminder`, `FinalDemand` | `application/reminders.py` |
+| **State** | Manages invoice state transitions (`DRAFT`, `SENT`, `PARTIALLY_PAID`, `DISPUTED`, `PAID`, `WRITTEN_OFF`) and state-gated operations. | `InvoiceState`, `DraftState`, `SentState`, `PartiallyPaidState`, `DisputedState`, `PaidState`, `WrittenOffState` | `domain/invoice_state.py` |
+| **Strategy (Prioritization)** | Swappable Action Centre ranking algorithms. | `PrioritizationStrategy`, `AmountFirstStrategy`, `OldestFirstStrategy`, `RiskWeightedStrategy`, `PrioritizationRegistry` | `application/prioritization.py` |
+| **Strategy (Playbook)** | Maps structured blocker reasons to recommended next actions. | `ResolutionStrategy`, `MissingPOResolution`, `ApprovalResolution`, `DisputeResolution`, `WrongDetailsResolution`, `MissingDocumentsResolution`, `NoResponseResolution`, `OtherResolution`, `ResolutionPlaybook` | `application/playbook.py` |
+| **Template Method** | Consistent reminder structure with tone-specific copy. | `ReminderMessage`, `PoliteReminder`, `FirmReminder`, `FinalNoticeReminder` | `application/reminders.py` |
 | **Factory (Invoice)** | Aggregate instantiation, unique sequential numbering (`DP-YYYY-NNNN`). | `InvoiceFactory` | `application/invoice_factory.py` |
-| **Factory (Reminder)** | Selects reminder tone based on days overdue and escalation level. | `ReminderFactory` | `application/reminders.py` |
-| **Adapter** | Normalizes heterogeneous CSV source schemas into domain row format. | `InvoiceSource`, `CsvInvoiceSource` | `application/importing.py` |
-| **Chain of Responsibility** | Composable validation pipeline for batch imported rows. | `RowValidator`, `RequiredFieldsValidator`, `EmailValidator`, `AmountValidator`, etc. | `application/importing.py` |
+| **Factory (Reminder)** | Selects reminder tone (`POLITE`, `FIRM`, `FINAL`) based on days overdue and escalation level. | `ReminderFactory` | `application/reminders.py` |
+| **Adapter** | Normalizes heterogeneous CSV source schemas into domain row format. | `InvoiceSource`, `CsvInvoiceSource`, `InvoiceSourceFactory` | `application/importing.py` |
+| **Chain of Responsibility** | Composable validation pipeline for batch imported rows. | `RowValidator`, `RequiredFieldsValidator`, `ClientDataValidator`, `DateValidator`, `AmountValidator`, `StatusValidator`, `DuplicateInvoiceNumberValidator` | `application/importing.py` |
 | **Observer** | Decouples aggregate mutations from audit, actions, reliability, and notifications. | `EventBus`, `AuditLogListener`, `ActionGenerationListener`, `ReliabilityListener`, `NotificationListener` | `application/event_bus.py`, `application/listeners.py` |
 | **Facade** | Single entry point simplifying application subsystem coordination. | `CollectionFacade` | `application/facade.py` |
-| **Repository** | Pure domain ports implemented with transactional SQLAlchemy 2.0 ORM. | `InvoiceRepository`, `ClientRepository`, `SqlAlchemyInvoiceRepository` | `application/ports.py`, `infrastructure/sqlalchemy_repositories.py` |
+| **Repository** | Pure domain ports implemented with transactional SQLAlchemy 2.0 ORM. | `InvoiceRepository`, `ClientRepository`, `ProjectRepository`, `AuditRepository`, `NotificationRepository`, `SettingsRepository`, `SqlAlchemyInvoiceRepository` | `application/ports.py`, `infrastructure/sqlalchemy_repositories.py` |
 
 ---
 
@@ -100,7 +100,7 @@ npm install
 # Start Vite development server (proxies /api to http://localhost:8000)
 npm run dev
 ```
-- Access the web application at: `http://localhost:5173`
+- Access the web application at: `http://localhost:5173` (or `http://localhost:5174`)
 
 ---
 
@@ -125,28 +125,28 @@ PYTHONPATH=. .venv/bin/pytest tests/infrastructure/test_repository_contracts.py
 PYTHONPATH=. .venv/bin/pytest tests/api/test_api_flow.py -v
 ```
 
-**Test Coverage Benchmark:** 254 passed in ~1.65s with **96% line coverage**.
+**Test Coverage Benchmark:** 254 passed in ~1.15s with **96% line coverage**.
 
 ---
 
 ## End-to-End Scripted Demo Walkthrough
 
-Follow this scripted 9-step demo (Section 17.2) directly in the browser UI at `http://localhost:5173`:
+Follow this scripted 9-step demo directly in the browser UI at `http://localhost:5173` (or `http://localhost:5174`):
 
 1. **Step 1 — Action Centre & Ranking:**
    - Open `/` (home page). Notice the ranked cards due today.
-   - Use the **Rank by** dropdown to switch between *"Risk-weighted"* and *"Largest amount first"*. Observe how cards reorder based on the active strategy.
+   - Use the **Rank by** dropdown to switch between *"Risk-Weighted"*, *"Largest Amount"*, and *"Most Overdue"*. Observe how cards reorder based on the active strategy.
 2. **Step 2 — Inspect Orbit Labs (Invoice 7):**
    - Click on `INV-OL-07` (or navigate via Invoices).
    - Observe the open `WRONG_DETAILS` blocker and its generated NextAction. Note the `PENDING` promise scheduled for date *T+3*.
 3. **Step 3 — Advance Simulated Date & Run Daily Check:**
    - In the topbar date control, set the date to *T+4* and click **Set** (activating the `SIMULATED` badge).
    - Click **⚡ Run Daily Check**.
-   - Notice the toast summary reporting missed promises. Refresh the page: the promise is now marked `MISSED`, a `HIGH` priority action appears, a notification bell item is created, and Orbit Labs' reliability score drops to `0%`.
+   - Notice the toast summary reporting missed promises. Refresh the page: the promise is now marked `MISSED`, a `CRITICAL` priority action appears, a notification bell item is created, and Orbit Labs' reliability score drops.
 4. **Step 4 — Tone-Escalated Reminder:**
    - On `INV-OL-07`, scroll to the **Reminder Generator** panel.
-   - The tone automatically defaults to `FIRM` (or `FINAL`). Observe that the rendered message explicitly mentions the `WRONG_DETAILS` blocker and the missed promise commitment.
-   - Click **📋 Copy to Clipboard**, then click **Mark as Sent**. Note that the reminder escalation level increments to Level 1.
+   - The tone automatically defaults to `FIRM` (or `FINAL`). Observe that the rendered message explicitly mentions the blocker and any missed promise commitment.
+   - Click **📋 Copy to Clipboard**, then click **Mark as Sent**.
 5. **Step 5 — Record Partial Payment on Disputed Invoice & Resolve Dispute:**
    - Open invoice `INV-GL-05` (Greenleaf Foods, status: `DISPUTED`).
    - Click **+ Record Payment**, enter `20000.00`, and save. Notice the status remains `DISPUTED` while under investigation.
