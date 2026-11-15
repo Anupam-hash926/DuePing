@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
+import { Toast as ToastBanner } from '../ui/Toast'
 
 export interface Toast {
   id: string
@@ -38,28 +39,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ toasts, showSuccess, showError, showInfo, removeToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none">
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto p-4 rounded-lg shadow-lg text-sm flex items-start justify-between border transition-all duration-200 ${
-              toast.type === 'success'
-                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                : toast.type === 'error'
-                ? 'bg-rose-50 text-rose-900 border-rose-200'
-                : 'bg-blue-50 text-blue-900 border-blue-200'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-semibold capitalize">{toast.type}:</span>
-              <span>{toast.message}</span>
-            </div>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="ml-3 text-slate-400 hover:text-slate-600 font-bold"
-            >
-              ×
-            </button>
+          <div key={toast.id} className="pointer-events-auto">
+            <ToastBanner
+              id={toast.id}
+              type={toast.type}
+              title={toast.type === 'error' ? 'Error' : toast.type === 'success' ? 'Success' : 'Notice'}
+              message={toast.message}
+              onClose={() => removeToast(toast.id)}
+            />
           </div>
         ))}
       </div>

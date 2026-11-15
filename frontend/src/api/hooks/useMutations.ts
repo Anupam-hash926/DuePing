@@ -91,12 +91,30 @@ export function useCompleteAction(invoiceId: string, actionId: string) {
   })
 }
 
+export function useCompleteAnyAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, actionId }: { invoiceId: string; actionId: string }) =>
+      apiClient.post<InvoiceRead>(`/invoices/${invoiceId}/actions/${actionId}/complete`),
+    onSuccess: (_, vars) => invalidateInvoiceDependencies(qc, vars.invoiceId),
+  })
+}
+
 export function useRescheduleAction(invoiceId: string, actionId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: NextActionReschedule) =>
       apiClient.post<InvoiceRead>(`/invoices/${invoiceId}/actions/${actionId}/reschedule`, body),
     onSuccess: () => invalidateInvoiceDependencies(qc, invoiceId),
+  })
+}
+
+export function useRescheduleAnyAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, actionId, newDate }: { invoiceId: string; actionId: string; newDate: string }) =>
+      apiClient.post<InvoiceRead>(`/invoices/${invoiceId}/actions/${actionId}/reschedule`, { new_date: newDate }),
+    onSuccess: (_, vars) => invalidateInvoiceDependencies(qc, vars.invoiceId),
   })
 }
 
@@ -151,17 +169,8 @@ export function useSetSimulatedDate() {
 export function useImportInvoices() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (formData: FormData) =>
-      fetch('/api/import/invoices', {
-        method: 'POST',
-        body: formData,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(err.error?.message || err.detail || 'Import failed')
-        }
-        return res.json() as Promise<ImportResultRead>
-      }),
+    mutationFn: (body: { format: string; content: string }) =>
+      apiClient.post<ImportResultRead>('/import/invoices', body),
     onSuccess: () => invalidateEverything(qc),
   })
 }

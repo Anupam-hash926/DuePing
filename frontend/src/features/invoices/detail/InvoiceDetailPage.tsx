@@ -20,7 +20,8 @@ import { Skeleton } from '../../../ui/Skeleton'
 export const InvoiceDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') ?? 'overview'
+  const rawTab = searchParams.get('tab') ?? 'timeline'
+  const initialTab = rawTab === 'overview' ? 'blockers' : rawTab === 'history' ? 'timeline' : rawTab
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: auditEvents } = useAudit(id)
@@ -93,44 +94,14 @@ export const InvoiceDetailPage: React.FC = () => {
       {/* Lifecycle Progression */}
       <StatusStepper status={invoice.status} />
 
-      {/* Structured Domain Tabs */}
+      {/* Structured Domain Tabs per Spec 10.4: Timeline · Blockers · Payments · Documents · Reminder */}
       <Tabs
         defaultValue={initialTab}
         onValueChange={handleTabChange}
         tabs={[
           {
-            value: 'overview',
-            label: 'Overview & Actions',
-            content: (
-              <div className="space-y-6">
-                <ActionsPanel invoice={invoice} />
-                <BlockersPanel invoice={invoice} modalOpen={blockerOpen} onModalChange={setBlockerOpen} />
-              </div>
-            ),
-          },
-          {
-            value: 'financials',
-            label: 'Payments & Commitments',
-            content: (
-              <div className="space-y-6">
-                <PaymentsPanel invoice={invoice} modalOpen={paymentOpen} onModalChange={setPaymentOpen} />
-                <PromisesTimeline invoice={invoice} />
-              </div>
-            ),
-          },
-          {
-            value: 'reminder',
-            label: 'Smart Reminder',
-            content: <ReminderPanel invoice={invoice} />,
-          },
-          {
-            value: 'documents',
-            label: 'Documents',
-            content: <DocumentsPanel invoice={invoice} />,
-          },
-          {
-            value: 'history',
-            label: 'Audit & History',
+            value: 'timeline',
+            label: 'Timeline',
             content: (
               <HistoryPanel
                 invoice={invoice}
@@ -139,6 +110,36 @@ export const InvoiceDetailPage: React.FC = () => {
                 onFollowUpModalChange={setFollowUpOpen}
               />
             ),
+          },
+          {
+            value: 'blockers',
+            label: 'Blockers',
+            content: (
+              <div className="space-y-6">
+                <BlockersPanel invoice={invoice} modalOpen={blockerOpen} onModalChange={setBlockerOpen} />
+                <ActionsPanel invoice={invoice} />
+              </div>
+            ),
+          },
+          {
+            value: 'payments',
+            label: 'Payments',
+            content: (
+              <div className="space-y-6">
+                <PaymentsPanel invoice={invoice} modalOpen={paymentOpen} onModalChange={setPaymentOpen} />
+                <PromisesTimeline invoice={invoice} />
+              </div>
+            ),
+          },
+          {
+            value: 'documents',
+            label: 'Documents',
+            content: <DocumentsPanel invoice={invoice} />,
+          },
+          {
+            value: 'reminder',
+            label: 'Reminder',
+            content: <ReminderPanel invoice={invoice} />,
           },
         ]}
       />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { AlertOctagon, CheckCircle2, Plus } from 'lucide-react'
-import type { InvoiceRead, BlockerRead } from '../../../api/types'
+import { AlertOctagon, CheckCircle2, Plus, CornerDownRight } from 'lucide-react'
+import type { InvoiceRead, BlockerRead, NextActionRead } from '../../../api/types'
 import { GroupedList } from '../../../ui/GroupedList'
 import { ListRow } from '../../../ui/ListRow'
 import { Button } from '../../../ui/Button'
@@ -76,47 +76,70 @@ export const BlockersPanel: React.FC<BlockersPanelProps> = ({
           No blockers active. Invoice is proceeding normally.
         </div>
       ) : (
-        <GroupedList>
-          {invoice.blockers.map((b: BlockerRead) => (
-            <ListRow
-              key={b.id}
-              leading={
-                b.status !== 'RESOLVED' ? (
-                  <AlertOctagon className="w-5 h-5 text-warning flex-shrink-0" />
-                ) : (
-                  <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                )
-              }
-              title={
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-text">{b.description}</span>
-                  <Badge variant={b.status !== 'RESOLVED' ? 'warning' : 'neutral'} size="sm">
-                    {b.type.replace('_', ' ')}
-                  </Badge>
-                </div>
-              }
-              subtitle={
-                <span className="text-text-3">
-                  Raised {formatDate(b.created_at)}
-                  {b.assigned_to && ` · Owner: ${b.assigned_to}`}
-                  {b.status === 'RESOLVED' && b.resolved_at && ` · Resolved ${formatDate(b.resolved_at)}`}
-                </span>
-              }
-              trailing={
-                b.status !== 'RESOLVED' && allowed.has('resolve_blocker') ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 text-xs px-2.5"
-                    onClick={() => setResolvingBlockerId(b.id)}
-                  >
-                    Resolve
-                  </Button>
-                ) : undefined
-              }
-            />
-          ))}
-        </GroupedList>
+        <div className="space-y-3">
+          {invoice.blockers.map((b: BlockerRead) => {
+            const matchingAction = b.status !== 'RESOLVED'
+              ? invoice.actions.find((a: NextActionRead) => !a.completed_at && a.source === 'BLOCKER')
+              : undefined
+
+            return (
+              <div key={b.id} className="space-y-1">
+                <GroupedList>
+                  <ListRow
+                    leading={
+                      b.status !== 'RESOLVED' ? (
+                        <AlertOctagon className="w-5 h-5 text-warning flex-shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                      )
+                    }
+                    title={
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-text">{b.description}</span>
+                        <Badge variant={b.status !== 'RESOLVED' ? 'warning' : 'neutral'} size="sm">
+                          {b.type.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    }
+                    subtitle={
+                      <span className="text-text-3">
+                        Raised {formatDate(b.created_at)}
+                        {b.assigned_to && ` · Owner: ${b.assigned_to}`}
+                        {b.status === 'RESOLVED' && b.resolved_at && ` · Resolved ${formatDate(b.resolved_at)}`}
+                      </span>
+                    }
+                    trailing={
+                      b.status !== 'RESOLVED' && allowed.has('resolve_blocker') ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs px-2.5"
+                          onClick={() => setResolvingBlockerId(b.id)}
+                        >
+                          Resolve
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                </GroupedList>
+
+                {/* Paired generated next action connected by a thin line */}
+                {matchingAction && (
+                  <div className="ml-6 pl-4 border-l-2 border-tint/40 py-1 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-tint">
+                      <CornerDownRight className="w-3.5 h-3.5" />
+                      <span>Generated Next Action</span>
+                    </div>
+                    <div className="text-xs font-medium text-text bg-surface-solid rounded-xl p-2.5 border border-hairline flex items-center justify-between">
+                      <span>{matchingAction.description}</span>
+                      <span className="text-text-3">Due {formatDate(matchingAction.due_date)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {/* Raise Blocker Modal */}
