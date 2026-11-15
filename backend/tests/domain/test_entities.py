@@ -355,3 +355,53 @@ class TestPaymentUnit:
         )
         assert reconstituted.id == "pay1"
 
+
+class TestInvoiceEncapsulation:
+    def test_invoice_child_collections_are_read_only_tuples(self):
+        inv = make_invoice()
+        assert isinstance(inv.payments, tuple)
+        assert isinstance(inv.blockers, tuple)
+        assert isinstance(inv.promises, tuple)
+        assert isinstance(inv.follow_ups, tuple)
+        assert isinstance(inv.documents, tuple)
+        assert isinstance(inv.actions, tuple)
+
+        with pytest.raises(AttributeError):
+            inv.payments.append(None)  # type: ignore
+
+        with pytest.raises(AttributeError):
+            inv.blockers.append(None)  # type: ignore
+
+        with pytest.raises(AttributeError):
+            inv.promises.append(None)  # type: ignore
+
+        with pytest.raises(AttributeError):
+            inv.follow_ups.append(None)  # type: ignore
+
+        with pytest.raises(AttributeError):
+            inv.documents.append(None)  # type: ignore
+
+        with pytest.raises(AttributeError):
+            inv.actions.append(None)  # type: ignore
+
+    def test_invoice_entity_level_lookups(self):
+        inv = make_invoice()
+        inv.send(NOW)
+
+        # Blocker lookup
+        from app.domain.enums import BlockerType
+        b = inv.raise_blocker(BlockerType.MISSING_PO, "No PO", None, NOW)
+        assert inv.get_blocker(b.id) is b
+        assert inv.get_blocker("nonexistent") is None
+
+        # Promise lookup
+        pr = inv.record_promise(TODAY + timedelta(days=3), TODAY, NOW)
+        assert inv.get_promise(pr.id) is pr
+        assert inv.get_promise("nonexistent") is None
+
+        # Action lookup
+        act = NextAction("Call client", Priority.HIGH, TODAY, ActionSource.MANUAL, NOW)
+        inv.add_action(act)
+        assert inv.get_action(act.id) is act
+        assert inv.get_action("nonexistent") is None
+

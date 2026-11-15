@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.domain.enums import BlockerType, BlockerStatus
 from app.domain.exceptions import InvalidStateTransition
@@ -40,7 +40,7 @@ class PaymentBlocker:
         self.resolved_at = resolved_at
 
     @classmethod
-    def reconstitute(cls, **fields) -> "PaymentBlocker":
+    def reconstitute(cls, **fields: Any) -> "PaymentBlocker":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

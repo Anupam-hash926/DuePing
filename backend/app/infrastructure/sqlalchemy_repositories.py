@@ -102,68 +102,57 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
 
                 # 2. Synchronize child collections: delete removed items, merge current ones
                 # Payments
+                # Payments
                 current_p_ids = {p.id for p in invoice.payments}
-                session.execute(
-                    delete(PaymentModel).where(
-                        PaymentModel.invoice_id == invoice.id,
-                        PaymentModel.id.not_in(current_p_ids) if current_p_ids else True,
-                    )
-                )
+                p_conds = [PaymentModel.invoice_id == invoice.id]
+                if current_p_ids:
+                    p_conds.append(PaymentModel.id.not_in(current_p_ids))
+                session.execute(delete(PaymentModel).where(*p_conds))
                 for p in invoice.payments:
                     session.merge(payment_to_model(p, invoice.id))
 
                 # Blockers
                 current_b_ids = {b.id for b in invoice.blockers}
-                session.execute(
-                    delete(BlockerModel).where(
-                        BlockerModel.invoice_id == invoice.id,
-                        BlockerModel.id.not_in(current_b_ids) if current_b_ids else True,
-                    )
-                )
+                b_conds = [BlockerModel.invoice_id == invoice.id]
+                if current_b_ids:
+                    b_conds.append(BlockerModel.id.not_in(current_b_ids))
+                session.execute(delete(BlockerModel).where(*b_conds))
                 for b in invoice.blockers:
                     session.merge(blocker_to_model(b, invoice.id))
 
                 # Promises
                 current_pr_ids = {pr.id for pr in invoice.promises}
-                session.execute(
-                    delete(PromiseModel).where(
-                        PromiseModel.invoice_id == invoice.id,
-                        PromiseModel.id.not_in(current_pr_ids) if current_pr_ids else True,
-                    )
-                )
+                pr_conds = [PromiseModel.invoice_id == invoice.id]
+                if current_pr_ids:
+                    pr_conds.append(PromiseModel.id.not_in(current_pr_ids))
+                session.execute(delete(PromiseModel).where(*pr_conds))
                 for pr in invoice.promises:
                     session.merge(promise_to_model(pr, invoice.id))
 
                 # Follow-ups
                 current_fu_ids = {fu.id for fu in invoice.follow_ups}
-                session.execute(
-                    delete(FollowUpModel).where(
-                        FollowUpModel.invoice_id == invoice.id,
-                        FollowUpModel.id.not_in(current_fu_ids) if current_fu_ids else True,
-                    )
-                )
+                fu_conds = [FollowUpModel.invoice_id == invoice.id]
+                if current_fu_ids:
+                    fu_conds.append(FollowUpModel.id.not_in(current_fu_ids))
+                session.execute(delete(FollowUpModel).where(*fu_conds))
                 for fu in invoice.follow_ups:
                     session.merge(follow_up_to_model(fu, invoice.id))
 
                 # Documents
                 current_doc_ids = {d.id for d in invoice.documents}
-                session.execute(
-                    delete(DocumentModel).where(
-                        DocumentModel.invoice_id == invoice.id,
-                        DocumentModel.id.not_in(current_doc_ids) if current_doc_ids else True,
-                    )
-                )
+                doc_conds = [DocumentModel.invoice_id == invoice.id]
+                if current_doc_ids:
+                    doc_conds.append(DocumentModel.id.not_in(current_doc_ids))
+                session.execute(delete(DocumentModel).where(*doc_conds))
                 for d in invoice.documents:
                     session.merge(document_to_model(d, invoice.id))
 
                 # Actions
                 current_act_ids = {a.id for a in invoice.actions}
-                session.execute(
-                    delete(NextActionModel).where(
-                        NextActionModel.invoice_id == invoice.id,
-                        NextActionModel.id.not_in(current_act_ids) if current_act_ids else True,
-                    )
-                )
+                act_conds = [NextActionModel.invoice_id == invoice.id]
+                if current_act_ids:
+                    act_conds.append(NextActionModel.id.not_in(current_act_ids))
+                session.execute(delete(NextActionModel).where(*act_conds))
                 for a in invoice.actions:
                     session.merge(next_action_to_model(a, invoice.id))
 

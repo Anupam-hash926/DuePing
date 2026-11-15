@@ -17,8 +17,10 @@
 |---|---|---|
 | **ADD-1** | `test_forbidden_imports.py` | AST-based automated test to guarantee `backend/app/domain/` imports exclusively from Python standard library. |
 | **ADD-2** | `test_docs_match_code.py` | AST and regex-based documentation drift test to prevent class, method, or enum drift between code and docs. |
-| **ADD-3** | `POST /api/system/reset-demo` | Programmatic reset endpoint allowing automated integration tests and browser demos to reseed test state. |
+| **ADD-3** | `POST /api/system/reset-demo` guarded by `DUEPING_ENABLE_RESET` | Programmatic reset endpoint allowing automated integration tests and browser demos to reseed test state; returns 404 in production mode unless explicitly enabled. |
 | **ADD-4** | `TRACEABILITY.md`, `CRC_CARDS.md`, `USE_CASE_SPECS.md` | Formal OOAD documentation artifacts linking use cases, classes, patterns, and test suites. |
+| **ADD-5** | `_ActiveState` hierarchy base class | Extracted shared transitions (`mark_disputed`, `write_off`) and operations set for active states (`SentState`, `PartiallyPaidState`, `DisputedState`). |
+| **ADD-6** | Complete event audit trail | Added `ActionRescheduled`, `DocumentRemoved`, and `ActionsCancelled` domain events to provide complete traceability for all lifecycle mutations. |
 
 ---
 

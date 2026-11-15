@@ -2,7 +2,7 @@
 from __future__ import annotations
 import uuid
 from datetime import date, datetime
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Set
 
 from app.domain.enums import (
     InvoiceStatus, BlockerType, BlockerStatus, ActionSource,
@@ -22,7 +22,8 @@ from app.domain.events import (
     InvoiceDisputed, DisputeResolved, InvoiceWrittenOff,
     BlockerRaised, BlockerResolved, PromiseRecorded, PromiseKept,
     PromiseMissed, InvoiceBecameOverdue, FollowUpLogged, ReminderSent,
-    DocumentAttached, ActionCreated, ActionCompleted,
+    DocumentAttached, DocumentRemoved, ActionCreated, ActionCompleted,
+    ActionRescheduled, ActionsCancelled,
 )
 
 ACTIVE_STATUSES = {InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED}
@@ -69,18 +70,18 @@ class Invoice:
         self.overdue_notified: bool = overdue_notified
         self.created_at: datetime = created_at or now
 
-        self.payments: List[Payment] = []
-        self.blockers: List[PaymentBlocker] = []
-        self.promises: List[PaymentPromise] = []
-        self.follow_ups: List[FollowUp] = []
-        self.documents: List[SupportingDocument] = []
-        self.actions: List[NextAction] = []
+        self._payments: List[Payment] = []
+        self._blockers: List[PaymentBlocker] = []
+        self._promises: List[PaymentPromise] = []
+        self._follow_ups: List[FollowUp] = []
+        self._documents: List[SupportingDocument] = []
+        self._actions: List[NextAction] = []
 
         self._state: InvoiceState = DraftState()
         self._events: List[DomainEvent] = []
 
     @classmethod
-    def reconstitute(cls, **fields) -> "Invoice":
+    def reconstitute(cls, **fields: Any) -> "Invoice":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         obj.id = fields["id"]
@@ -93,12 +94,12 @@ class Invoice:
         obj.reminder_level = fields.get("reminder_level", 0)
         obj.overdue_notified = fields.get("overdue_notified", False)
         obj.created_at = fields["created_at"]
-        obj.payments = fields.get("payments", [])
-        obj.blockers = fields.get("blockers", [])
-        obj.promises = fields.get("promises", [])
-        obj.follow_ups = fields.get("follow_ups", [])
-        obj.documents = fields.get("documents", [])
-        obj.actions = fields.get("actions", [])
+        obj._payments = list(fields.get("payments", []))
+        obj._blockers = list(fields.get("blockers", []))
+        obj._promises = list(fields.get("promises", []))
+        obj._follow_ups = list(fields.get("follow_ups", []))
+        obj._documents = list(fields.get("documents", []))
+        obj._actions = list(fields.get("actions", []))
         obj._state = state_for(fields["status"])
         obj._events = []
         return obj
@@ -115,11 +116,55 @@ class Invoice:
     def _base(self) -> dict:
         return {"invoice_id": self.id, "invoice_number": self.invoice_number}
 
-    def _get_blocker(self, blocker_id: str) -> PaymentBlocker:
-        for b in self.blockers:
+    # ── Encapsulated Collections & Lookups ───────────────────────────────────
+
+    @property
+    def payments(self) -> tuple[Payment, ...]:
+        return tuple(self._payments)
+
+    @property
+    def blockers(self) -> tuple[PaymentBlocker, ...]:
+        return tuple(self._blockers)
+
+    @property
+    def promises(self) -> tuple[PaymentPromise, ...]:
+        return tuple(self._promises)
+
+    @property
+    def follow_ups(self) -> tuple[FollowUp, ...]:
+        return tuple(self._follow_ups)
+
+    @property
+    def documents(self) -> tuple[SupportingDocument, ...]:
+        return tuple(self._documents)
+
+    @property
+    def actions(self) -> tuple[NextAction, ...]:
+        return tuple(self._actions)
+
+    def get_blocker(self, blocker_id: str) -> Optional[PaymentBlocker]:
+        for b in self._blockers:
             if b.id == blocker_id:
                 return b
-        raise EntityNotFound(f"Blocker {blocker_id} not found on invoice {self.id}")
+        return None
+
+    def _get_blocker(self, blocker_id: str) -> PaymentBlocker:
+        b = self.get_blocker(blocker_id)
+        if b is None:
+            raise EntityNotFound(f"Blocker {blocker_id} not found on invoice {self.id}")
+        return b
+
+    def get_promise(self, promise_id: str) -> Optional[PaymentPromise]:
+        for p in self._promises:
+            if p.id == promise_id:
+                return p
+        return None
+
+    def get_action(self, action_id: str) -> Optional[NextAction]:
+        for a in self._actions:
+            if a.id == action_id:
+                return a
+        return None
 
     # ── Derived properties ────────────────────────────────────────────────────
 
@@ -130,7 +175,7 @@ class Invoice:
     def amount_paid(self) -> Money:
         """Sum of all recorded payments."""
         total = Money.zero(self.total.currency)
-        for p in self.payments:
+        for p in self._payments:
             total = total.add(p.amount)
         return total
 
@@ -154,24 +199,24 @@ class Invoice:
 
     def open_blockers(self) -> List[PaymentBlocker]:
         """All unresolved blockers on this invoice."""
-        return [b for b in self.blockers if b.is_open()]
+        return [b for b in self._blockers if b.is_open()]
 
     def pending_promise(self) -> Optional[PaymentPromise]:
         """Most recent PENDING promise, or None."""
-        for p in reversed(self.promises):
+        for p in reversed(self._promises):
             if p.status == PromiseStatus.PENDING:
                 return p
         return None
 
     def pending_actions(self) -> List[NextAction]:
         """All PENDING next actions."""
-        return [a for a in self.actions if a.status == ActionStatus.PENDING]
+        return [a for a in self._actions if a.status == ActionStatus.PENDING]
 
     def last_contact_date(self) -> Optional[datetime]:
         """Datetime of the most recent follow-up, or None."""
-        if not self.follow_ups:
+        if not self._follow_ups:
             return None
-        return max(f.contact_date for f in self.follow_ups)
+        return max(f.contact_date for f in self._follow_ups)
 
     def allowed_operations(self) -> Set[str]:
         """Operations permitted in the current state."""
@@ -205,7 +250,7 @@ class Invoice:
         # State transition: state.record_payment calculates remaining = outstanding - payment.amount
         # BEFORE we append, so outstanding() still reflects pre-payment balance here.
         self._state.record_payment(self, payment)
-        self.payments.append(payment)
+        self._payments.append(payment)
 
         fully_paid = self.outstanding().is_zero()
         self._record(PaymentReceived(
@@ -215,7 +260,7 @@ class Invoice:
 
         if fully_paid:
             # 1. For every PENDING promise: if on time mark KEPT, else mark MISSED
-            for promise in self.promises:
+            for promise in self._promises:
                 if promise.status == PromiseStatus.PENDING:
                     date_ok = payment.payment_date <= promise.promised_date
                     amount_ok = (promise.amount is None or payment.amount >= promise.amount)
@@ -245,7 +290,7 @@ class Invoice:
             self._record(InvoicePaid(occurred_at=now, **self._base()))
         else:
             # Check promises for partial payment: mark kept if payment is on time and meets amount constraint
-            for promise in self.promises:
+            for promise in self._promises:
                 if promise.status == PromiseStatus.PENDING:
                     date_ok = payment.payment_date <= promise.promised_date
                     amount_ok = (promise.amount is None or payment.amount >= promise.amount)
@@ -267,7 +312,7 @@ class Invoice:
             )
         blocker = PaymentBlocker(type=type, description=description,
                                  assigned_to=assigned_to, created_at=now)
-        self.blockers.append(blocker)
+        self._blockers.append(blocker)
         self._record(BlockerRaised(occurred_at=now, blocker_id=blocker.id,
                                    blocker_type=type.name, **self._base()))
         if type == BlockerType.DISPUTED_AMOUNT and self.status != InvoiceStatus.DISPUTED:
@@ -293,7 +338,7 @@ class Invoice:
         if self.status == InvoiceStatus.DISPUTED:
             has_open_disputed = any(
                 b.type == BlockerType.DISPUTED_AMOUNT and b.is_open()
-                for b in self.blockers
+                for b in self._blockers
             )
             if not has_open_disputed:
                 self._state.resolve_dispute(self)
@@ -309,7 +354,7 @@ class Invoice:
                 f"Cannot log follow-up in {self.status.name} status"
             )
         fu = FollowUp(contact_date=contact_date, channel=channel, notes=notes, outcome=outcome)
-        self.follow_ups.append(fu)
+        self._follow_ups.append(fu)
         self._record(FollowUpLogged(occurred_at=now, follow_up_id=fu.id, **self._base()))
         return fu
 
@@ -324,12 +369,12 @@ class Invoice:
             )
         if promised_date < today:
             raise DomainValidationError("promised_date must be >= today")
-        for p in self.promises:
+        for p in self._promises:
             if p.status == PromiseStatus.PENDING:
                 p.supersede()
         promise = PaymentPromise(promised_date=promised_date, amount=amount,
                                  note=note, created_at=now)
-        self.promises.append(promise)
+        self._promises.append(promise)
         self._record(PromiseRecorded(occurred_at=now, promise_id=promise.id,
                                      promised_date=promised_date, **self._base()))
         return promise
@@ -337,7 +382,7 @@ class Invoice:
     def check_promises(self, today: date, now: datetime) -> List[PaymentPromise]:
         """Mark overdue PENDING promises as MISSED. Returns the list of missed promises."""
         missed = []
-        for promise in self.promises:
+        for promise in self._promises:
             if promise.is_overdue(today):
                 promise.mark_missed()
                 missed.append(promise)
@@ -371,32 +416,34 @@ class Invoice:
         self.reminder_level = min(3, self.reminder_level + 1)
         fu = FollowUp(contact_date=now, channel=channel,
                       notes=f"{tone.name} reminder sent", outcome=FollowUpOutcome.OTHER)
-        self.follow_ups.append(fu)
+        self._follow_ups.append(fu)
         self._record(ReminderSent(occurred_at=now, tone=tone.name, **self._base()))
 
     def attach_document(self, doc: SupportingDocument, now: datetime) -> None:
         """Attach a supporting document after validating its file type."""
         if not doc.validate_file_type():
             raise DomainValidationError(f"File type not allowed: {doc.file_name}")
-        self.documents.append(doc)
+        self._documents.append(doc)
         self._record(DocumentAttached(occurred_at=now, document_id=doc.id, **self._base()))
 
-    def remove_document(self, document_id: str) -> None:
+    def remove_document(self, document_id: str, now: Optional[datetime] = None) -> None:
         """Remove a document by id; raises EntityNotFound if absent."""
-        original = len(self.documents)
-        self.documents = [d for d in self.documents if d.id != document_id]
-        if len(self.documents) == original:
+        original = len(self._documents)
+        self._documents = [d for d in self._documents if d.id != document_id]
+        if len(self._documents) == original:
             raise EntityNotFound(f"Document {document_id} not found")
+        ev_now = now or datetime(2024, 1, 1)
+        self._record(DocumentRemoved(occurred_at=ev_now, document_id=document_id, **self._base()))
 
     def add_action(self, action: NextAction) -> None:
         """Add a next action to this invoice."""
-        self.actions.append(action)
+        self._actions.append(action)
         self._record(ActionCreated(occurred_at=action.created_at,
                                    action_id=action.id, **self._base()))
 
     def complete_action(self, action_id: str, now: datetime) -> None:
         """Mark an action as completed."""
-        for a in self.actions:
+        for a in self._actions:
             if a.id == action_id:
                 a.mark_completed(now)
                 self._record(ActionCompleted(occurred_at=now,
@@ -404,11 +451,17 @@ class Invoice:
                 return
         raise EntityNotFound(f"Action {action_id} not found")
 
-    def reschedule_action(self, action_id: str, new_date: date, today: date) -> None:
+    def reschedule_action(
+        self, action_id: str, new_date: date, today: date, now: Optional[datetime] = None,
+    ) -> None:
         """Reschedule a PENDING action to a future date."""
-        for a in self.actions:
+        for a in self._actions:
             if a.id == action_id:
                 a.reschedule(new_date, today)
+                ev_now = now or datetime.combine(today, datetime.min.time())
+                self._record(ActionRescheduled(
+                    occurred_at=ev_now, action_id=action_id, new_date=new_date, **self._base()
+                ))
                 return
         raise EntityNotFound(f"Action {action_id} not found")
 
@@ -416,9 +469,11 @@ class Invoice:
         self,
         source: Optional[ActionSource] = None,
         source_ref: Optional[str] = None,
-    ) -> None:
+        now: Optional[datetime] = None,
+    ) -> int:
         """Cancel PENDING actions matching optional source/source_ref filters."""
-        for a in self.actions:
+        count = 0
+        for a in self._actions:
             if a.status != ActionStatus.PENDING:
                 continue
             if source is not None and a.source != source:
@@ -426,6 +481,16 @@ class Invoice:
             if source_ref is not None and a.source_ref != source_ref:
                 continue
             a.cancel()
+            count += 1
+        if count > 0:
+            ev_now = now or datetime(2024, 1, 1)
+            self._record(ActionsCancelled(
+                occurred_at=ev_now,
+                count=count,
+                source=source.name if source else None,
+                **self._base()
+            ))
+        return count
 
     def write_off(self, reason: str, now: datetime) -> None:
         """Write off an active invoice; cancels pending actions and supersedes promises."""
@@ -433,8 +498,8 @@ class Invoice:
             raise InvalidStateTransition(
                 f"Cannot write off invoice in {self.status.name} status"
             )
-        self.cancel_actions()
-        for p in self.promises:
+        self.cancel_actions(now=now)
+        for p in self._promises:
             if p.status == PromiseStatus.PENDING:
                 p.supersede()
         self._state.write_off(self)

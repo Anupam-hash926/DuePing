@@ -2,7 +2,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.domain.enums import DocumentType
 
@@ -33,7 +33,7 @@ class SupportingDocument:
             self.file_type = ext
 
     @classmethod
-    def reconstitute(cls, **fields) -> "SupportingDocument":
+    def reconstitute(cls, **fields: Any) -> "SupportingDocument":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

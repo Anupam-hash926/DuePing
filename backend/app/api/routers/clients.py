@@ -100,7 +100,7 @@ def create_project(
     project = facade.create_project(
         client_id=body.client_id,
         project_name=body.project_name,
-        description=body.description,
+        description=body.description or "",
         start_date=body.start_date,
     )
     return project_to_dto(project)

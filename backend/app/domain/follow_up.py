@@ -2,7 +2,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.domain.enums import Channel, FollowUpOutcome
 
@@ -34,7 +34,7 @@ class FollowUp:
         object.__setattr__(self, "outcome", outcome)
 
     @classmethod
-    def reconstitute(cls, **fields) -> "FollowUp":
+    def reconstitute(cls, **fields: Any) -> "FollowUp":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

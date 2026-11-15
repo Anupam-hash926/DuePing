@@ -51,6 +51,8 @@ def repo_bundle(request):
             "sqlite:///:memory:",
             connect_args={"check_same_thread": False},
         )
+        from app.infrastructure.db import enable_sqlite_foreign_keys
+        enable_sqlite_foreign_keys(engine)
         Base.metadata.create_all(bind=engine)
         session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
@@ -61,6 +63,8 @@ def repo_bundle(request):
             "audit_repo": SqlAlchemyAuditRepository(session_factory),
             "notification_repo": SqlAlchemyNotificationRepository(session_factory),
             "settings_repo": SqlAlchemySettingsRepository(session_factory),
+            "session_factory": session_factory,
+            "engine": engine,
             "backend": "sqlite",
         }
 
@@ -323,6 +327,9 @@ class TestAuxiliaryRepositoriesContract:
 
     def test_next_invoice_sequence_uses_max_suffix(self, repo_bundle):
         repo = repo_bundle["invoice_repo"]
+        client_repo = repo_bundle["client_repo"]
+        client = Client(name="Acme", email="acme@example.com", id="c1")
+        client_repo.save(client)
         # Empty repo starts at 1
         assert repo.next_invoice_sequence(2026) == 1
 
@@ -351,3 +358,60 @@ class TestAuxiliaryRepositoriesContract:
 
         # Must return 6 (1 + max(5)) despite only 2 total invoices
         assert repo.next_invoice_sequence(2026) == 6
+
+    def test_sqlite_foreign_key_missing_invoice_raises_integrity_error(self, repo_bundle):
+        if repo_bundle["backend"] != "sqlite":
+            pytest.skip("SQLite specific foreign key test")
+        from sqlalchemy.exc import IntegrityError
+        from app.infrastructure.orm_models import PaymentModel
+        session_factory = repo_bundle["session_factory"]
+        with session_factory() as session:
+            bad_payment = PaymentModel(
+                id="bad-pay-1",
+                invoice_id="non-existent-inv",
+                amount_minor=10000,
+                payment_date=TODAY,
+                method="BANK_TRANSFER",
+                recorded_at=NOW,
+            )
+            session.add(bad_payment)
+            with pytest.raises(IntegrityError):
+                session.commit()
+
+    def test_sqlite_cascade_delete(self, repo_bundle):
+        if repo_bundle["backend"] != "sqlite":
+            pytest.skip("SQLite specific cascade test")
+        from sqlalchemy import select, delete
+        from app.infrastructure.orm_models import InvoiceModel, PaymentModel, ClientModel
+        session_factory = repo_bundle["session_factory"]
+        with session_factory() as session:
+            client = ClientModel(id="c_fk", name="FK Client", email="fk@test.com", created_at=NOW)
+            session.add(client)
+            inv = InvoiceModel(
+                id="inv_fk",
+                invoice_number="DP-2026-9999",
+                client_id="c_fk",
+                issue_date=TODAY,
+                due_date=TODAY,
+                total_minor=50000,
+                created_at=NOW,
+            )
+            session.add(inv)
+            pay = PaymentModel(
+                id="pay_fk",
+                invoice_id="inv_fk",
+                amount_minor=50000,
+                payment_date=TODAY,
+                method="BANK_TRANSFER",
+                recorded_at=NOW,
+            )
+            session.add(pay)
+            session.commit()
+
+            # Delete invoice row
+            session.execute(delete(InvoiceModel).where(InvoiceModel.id == "inv_fk"))
+            session.commit()
+
+            # Payment row must have been cascade deleted
+            remaining_pay = session.scalar(select(PaymentModel).where(PaymentModel.id == "pay_fk"))
+            assert remaining_pay is None

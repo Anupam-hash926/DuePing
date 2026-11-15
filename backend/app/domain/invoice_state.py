@@ -62,7 +62,23 @@ class DraftState(InvoiceState):
         return {"edit", "send"}
 
 
-class SentState(InvoiceState):
+class _ActiveState(InvoiceState):
+    """Base state for active invoice states (Sent, PartiallyPaid, Disputed)."""
+
+    def mark_disputed(self, inv: "Invoice") -> None:
+        inv._set_state(DisputedState())
+
+    def write_off(self, inv: "Invoice") -> None:
+        inv._set_state(WrittenOffState())
+
+    def allowed_operations(self) -> Set[str]:
+        return {
+            "record_payment", "raise_blocker", "log_follow_up",
+            "record_promise", "attach_document", "send_reminder", "write_off",
+        }
+
+
+class SentState(_ActiveState):
     """Invoice sent; awaiting payment.
 
     # PATTERN: State — ConcreteState
@@ -81,20 +97,8 @@ class SentState(InvoiceState):
         else:
             inv._set_state(PartiallyPaidState())
 
-    def mark_disputed(self, inv: "Invoice") -> None:
-        inv._set_state(DisputedState())
 
-    def write_off(self, inv: "Invoice") -> None:
-        inv._set_state(WrittenOffState())
-
-    def allowed_operations(self) -> Set[str]:
-        return {
-            "record_payment", "raise_blocker", "log_follow_up",
-            "record_promise", "attach_document", "send_reminder", "write_off",
-        }
-
-
-class PartiallyPaidState(InvoiceState):
+class PartiallyPaidState(_ActiveState):
     """Invoice partially paid.
 
     # PATTERN: State — ConcreteState
@@ -110,20 +114,8 @@ class PartiallyPaidState(InvoiceState):
             inv._set_state(PaidState())
         # else stays PARTIALLY_PAID
 
-    def mark_disputed(self, inv: "Invoice") -> None:
-        inv._set_state(DisputedState())
 
-    def write_off(self, inv: "Invoice") -> None:
-        inv._set_state(WrittenOffState())
-
-    def allowed_operations(self) -> Set[str]:
-        return {
-            "record_payment", "raise_blocker", "log_follow_up",
-            "record_promise", "attach_document", "send_reminder", "write_off",
-        }
-
-
-class DisputedState(InvoiceState):
+class DisputedState(_ActiveState):
     """Invoice disputed; payment on hold.
 
     # PATTERN: State — ConcreteState
@@ -144,15 +136,6 @@ class DisputedState(InvoiceState):
             inv._set_state(PartiallyPaidState())
         else:
             inv._set_state(SentState())
-
-    def write_off(self, inv: "Invoice") -> None:
-        inv._set_state(WrittenOffState())
-
-    def allowed_operations(self) -> Set[str]:
-        return {
-            "record_payment", "raise_blocker", "log_follow_up",
-            "record_promise", "attach_document", "send_reminder", "write_off",
-        }
 
 
 class PaidState(InvoiceState):

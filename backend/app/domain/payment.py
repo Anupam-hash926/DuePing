@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.domain.money import Money
 from app.domain.enums import PaymentMethod
@@ -38,7 +38,7 @@ class Payment:
         object.__setattr__(self, "recorded_at", recorded_at)
 
     @classmethod
-    def reconstitute(cls, **fields) -> "Payment":
+    def reconstitute(cls, **fields: Any) -> "Payment":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

@@ -79,6 +79,9 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Copy example environment configuration
+cp .env.example .env
+
 # Seed the historical demo database (seeds 13 invoices and 5 clients)
 PYTHONPATH=. .venv/bin/python -m app.infrastructure.seed
 

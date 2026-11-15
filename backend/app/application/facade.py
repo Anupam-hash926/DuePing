@@ -362,8 +362,9 @@ class CollectionFacade:
         return self.invoice_repo.get(invoice_id)
 
     def remove_document(self, invoice_id: str, document_id: str) -> Invoice:
+        now = self.clock.now()
         invoice = self.invoice_repo.get(invoice_id)
-        invoice.remove_document(document_id)
+        invoice.remove_document(document_id, now)
         save_and_publish(self.invoice_repo, self.event_bus, invoice)
         return self.invoice_repo.get(invoice_id)
 
@@ -399,8 +400,9 @@ class CollectionFacade:
 
     def reschedule_action(self, invoice_id: str, action_id: str, new_date: date) -> Invoice:
         today = self.clock.today()
+        now = self.clock.now()
         invoice = self.invoice_repo.get(invoice_id)
-        invoice.reschedule_action(action_id, new_date, today)
+        invoice.reschedule_action(action_id, new_date, today, now)
         save_and_publish(self.invoice_repo, self.event_bus, invoice)
         return self.invoice_repo.get(invoice_id)
 

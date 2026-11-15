@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dueping.db")
@@ -16,6 +16,19 @@ engine = create_engine(
     echo=False,
     connect_args=connect_args,
 )
+
+
+def enable_sqlite_foreign_keys(target_engine) -> None:
+    """Ensure SQLite enforces foreign key constraints on connect."""
+    if str(target_engine.url).startswith("sqlite"):
+        @event.listens_for(target_engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+
+enable_sqlite_foreign_keys(engine)
 
 SessionLocal = sessionmaker(
     bind=engine,

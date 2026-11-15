@@ -251,6 +251,9 @@ classDiagram
         +pending_promise() PaymentPromise
         +pending_actions() list~NextAction~
         +last_contact_date() date
+        +get_blocker(blocker_id) PaymentBlocker
+        +get_promise(promise_id) PaymentPromise
+        +get_action(action_id) NextAction
         +send(sent_at: date)
         +record_payment(payment: Payment, today: date)
         +raise_blocker(type, description, assigned_to) PaymentBlocker
@@ -364,8 +367,11 @@ classDiagram
     class FollowUpLogged
     class ReminderSent
     class DocumentAttached
+    class DocumentRemoved
     class ActionCreated
     class ActionCompleted
+    class ActionRescheduled
+    class ActionsCancelled
 
     DomainEvent <|-- InvoiceSent
     DomainEvent <|-- PaymentReceived
@@ -382,6 +388,9 @@ classDiagram
     DomainEvent <|-- FollowUpLogged
     DomainEvent <|-- ReminderSent
     DomainEvent <|-- DocumentAttached
+    DomainEvent <|-- DocumentRemoved
     DomainEvent <|-- ActionCreated
     DomainEvent <|-- ActionCompleted
+    DomainEvent <|-- ActionRescheduled
+    DomainEvent <|-- ActionsCancelled
 ```

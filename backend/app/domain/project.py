@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
+from typing import Any, Optional
 
 from app.domain.exceptions import DomainValidationError
 
@@ -38,7 +38,7 @@ class Project:
         self.status = status
 
     @classmethod
-    def reconstitute(cls, **fields) -> "Project":
+    def reconstitute(cls, **fields: Any) -> "Project":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

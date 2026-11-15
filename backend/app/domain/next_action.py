@@ -2,7 +2,7 @@
 from __future__ import annotations
 import uuid
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Optional
 
 from app.domain.enums import Priority, ActionStatus, ActionSource
 from app.domain.exceptions import DomainValidationError, InvalidStateTransition
@@ -34,7 +34,7 @@ class NextAction:
         self.completed_at: Optional[datetime] = completed_at
 
     @classmethod
-    def reconstitute(cls, **fields) -> "NextAction":
+    def reconstitute(cls, **fields: Any) -> "NextAction":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

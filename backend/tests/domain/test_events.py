@@ -11,7 +11,8 @@ from app.domain.events import (
     InvoiceSent, PaymentReceived, InvoicePaid, InvoiceDisputed,
     DisputeResolved, InvoiceWrittenOff, BlockerRaised, BlockerResolved,
     PromiseRecorded, PromiseKept, PromiseMissed, InvoiceBecameOverdue,
-    FollowUpLogged, ReminderSent, DocumentAttached, ActionCreated, ActionCompleted,
+    FollowUpLogged, ReminderSent, DocumentAttached, DocumentRemoved,
+    ActionCreated, ActionCompleted, ActionRescheduled, ActionsCancelled,
 )
 from app.domain.money import Money
 from app.domain.payment import Payment
@@ -238,4 +239,78 @@ def test_pull_events_clears_list():
     assert len(inv._events) == 0
     # Second pull returns empty
     assert len(inv.pull_events()) == 0
+
+
+def test_remove_document_emits_document_removed():
+    inv = sent_invoice()
+    doc = SupportingDocument(
+        document_type=DocumentType.PURCHASE_ORDER,
+        file_name="po.pdf",
+        file_path="/tmp/po.pdf",
+        uploaded_at=NOW,
+    )
+    inv.attach_document(doc, NOW)
+    inv.pull_events()
+
+    inv.remove_document(doc.id, NOW)
+    events = inv.pull_events()
+    assert len(events) == 1
+    assert isinstance(events[0], DocumentRemoved)
+    assert events[0].document_id == doc.id
+    assert f"document {doc.id} removed" in events[0].describe()
+
+
+def test_reschedule_action_emits_action_rescheduled():
+    inv = sent_invoice()
+    act = NextAction(
+        description="Call CFO",
+        priority=Priority.HIGH,
+        due_date=TODAY,
+        source=ActionSource.MANUAL,
+        created_at=NOW,
+    )
+    inv.add_action(act)
+    inv.pull_events()
+
+    new_due = TODAY + timedelta(days=5)
+    inv.reschedule_action(act.id, new_due, TODAY, NOW)
+    events = inv.pull_events()
+    assert len(events) == 1
+    assert isinstance(events[0], ActionRescheduled)
+    assert events[0].action_id == act.id
+    assert events[0].new_date == new_due
+    assert f"rescheduled to {new_due.isoformat()}" in events[0].describe()
+
+
+def test_cancel_actions_emits_actions_cancelled_only_when_count_positive():
+    inv = sent_invoice()
+    # No actions -> cancelling emits nothing
+    inv.cancel_actions(now=NOW)
+    assert len(inv.pull_events()) == 0
+
+    act1 = NextAction(
+        description="Task 1",
+        priority=Priority.MEDIUM,
+        due_date=TODAY,
+        source=ActionSource.MANUAL,
+        created_at=NOW,
+    )
+    act2 = NextAction(
+        description="Task 2",
+        priority=Priority.LOW,
+        due_date=TODAY,
+        source=ActionSource.MANUAL,
+        created_at=NOW,
+    )
+    inv.add_action(act1)
+    inv.add_action(act2)
+    inv.pull_events()
+
+    inv.cancel_actions(source=ActionSource.MANUAL, now=NOW)
+    events = inv.pull_events()
+    assert len(events) == 1
+    assert isinstance(events[0], ActionsCancelled)
+    assert events[0].count == 2
+    assert events[0].source == "MANUAL"
+    assert "2 action(s) cancelled (source: MANUAL)" in events[0].describe()
 

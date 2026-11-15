@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from app.domain.exceptions import DomainValidationError
 from app.domain.money import Money
@@ -48,7 +48,7 @@ class Client:
         self.created_at = created_at or datetime(2024, 1, 1)  # placeholder; real clock injected above
 
     @classmethod
-    def reconstitute(cls, **fields) -> "Client":
+    def reconstitute(cls, **fields: Any) -> "Client":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

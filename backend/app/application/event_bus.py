@@ -6,7 +6,7 @@ failures are recorded for logging/testing.
 """
 from __future__ import annotations
 import logging
-from typing import Callable, Dict, List, Type
+from typing import Any, Callable, Dict, List, Type, TypeVar
 
 from app.application.ports import InvoiceRepository
 from app.domain.events import DomainEvent
@@ -14,6 +14,7 @@ from app.domain.invoice import Invoice
 
 logger = logging.getLogger(__name__)
 
+E = TypeVar("E", bound=DomainEvent)
 EventHandler = Callable[[DomainEvent], None]
 
 
@@ -24,15 +25,15 @@ class EventBus:
     """
 
     def __init__(self) -> None:
-        self._handlers: Dict[Type[DomainEvent], List[EventHandler]] = {}
+        self._handlers: Dict[Type[DomainEvent], List[Callable[[Any], None]]] = {}
         self._global_handlers: List[EventHandler] = []
         self.failures: List[tuple[DomainEvent, Exception]] = []
 
-    def subscribe(self, event_type: Type[DomainEvent], handler: EventHandler) -> None:
+    def subscribe(self, event_type: Type[E], handler: Callable[[E], None]) -> None:
         """Subscribe a handler to a specific event type."""
         if event_type not in self._handlers:
             self._handlers[event_type] = []
-        self._handlers[event_type].append(handler)
+        self._handlers[event_type].append(handler)  # type: ignore[arg-type]
 
     def subscribe_all(self, handler: EventHandler) -> None:
         """Subscribe a handler to all domain events."""

@@ -87,10 +87,12 @@ class ActionGenerationListener:
         if invoice.status not in (InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED):
             return
         # Skip if a pending action with same source_ref already exists
-        if any(a.source_ref == event.blocker_id and a.status.name == "PENDING" for a in invoice.actions):
+        if any(a.source_ref == event.blocker_id and a.status == ActionStatus.PENDING for a in invoice.actions):
             return
 
-        blocker = invoice._get_blocker(event.blocker_id)
+        blocker = invoice.get_blocker(event.blocker_id)
+        if blocker is None:
+            return
         client = self.client_repo.get(invoice.client_id)
         action = self.playbook.plan_for(blocker, invoice, client, self.clock.today())
         invoice.add_action(action)
@@ -100,7 +102,7 @@ class ActionGenerationListener:
         if not event.invoice_id:
             return
         invoice = self.invoice_repo.get(event.invoice_id)
-        invoice.cancel_actions(source=ActionSource.BLOCKER, source_ref=event.blocker_id)
+        invoice.cancel_actions(source=ActionSource.BLOCKER, source_ref=event.blocker_id, now=event.occurred_at)
         save_and_publish(self.invoice_repo, self.bus, invoice)
 
     def on_promise_missed(self, event: PromiseMissed) -> None:
@@ -164,7 +166,7 @@ class ActionGenerationListener:
         if not event.invoice_id:
             return
         invoice = self.invoice_repo.get(event.invoice_id)
-        invoice.cancel_actions()
+        invoice.cancel_actions(now=event.occurred_at)
         save_and_publish(self.invoice_repo, self.bus, invoice)
 
 

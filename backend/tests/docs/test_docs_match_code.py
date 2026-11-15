@@ -51,6 +51,7 @@ ALLOW_LIST = {
     "GENTLE",  # Mentioned in deviations as omitted tone
     "CollectionService",  # Naive design flaw analyzed in report notes
     "PersistencePort",  # Monolithic anti-pattern analyzed in ISP section
+    "DUEPING_ENABLE_RESET",  # Environment variable for demo reset
 }
 
 

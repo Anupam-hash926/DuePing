@@ -111,9 +111,12 @@ def mark_notifications_read(
     return SuccessResponse(ok=True)
 
 
-@router.post("/system/reset-demo", response_model=SuccessResponse)
-def reset_demo(
-    facade: CollectionFacade = Depends(get_facade),
-) -> SuccessResponse:
-    facade.reset_demo_data()
-    return SuccessResponse(ok=True)
+import os
+
+if os.getenv("DUEPING_ENABLE_RESET", "0").lower() in ("1", "true"):
+    @router.post("/system/reset-demo", response_model=SuccessResponse)
+    def reset_demo(
+        facade: CollectionFacade = Depends(get_facade),
+    ) -> SuccessResponse:
+        facade.reset_demo_data()
+        return SuccessResponse(ok=True)

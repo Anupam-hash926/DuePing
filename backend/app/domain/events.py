@@ -194,6 +194,16 @@ class DocumentAttached(DomainEvent):
 
 
 @dataclass
+class DocumentRemoved(DomainEvent):
+    """A supporting document has been removed."""
+
+    document_id: str = ""
+
+    def describe(self) -> str:
+        return f"Invoice {self.invoice_number}: document {self.document_id} removed"
+
+
+@dataclass
 class ActionCreated(DomainEvent):
     """A next action has been created."""
 
@@ -211,3 +221,27 @@ class ActionCompleted(DomainEvent):
 
     def describe(self) -> str:
         return f"Invoice {self.invoice_number}: action {self.action_id} completed"
+
+
+@dataclass
+class ActionRescheduled(DomainEvent):
+    """A next action has been rescheduled to a new due date."""
+
+    action_id: str = ""
+    new_date: Optional[date] = None
+
+    def describe(self) -> str:
+        date_str = self.new_date.isoformat() if self.new_date else "unknown"
+        return f"Invoice {self.invoice_number}: action {self.action_id} rescheduled to {date_str}"
+
+
+@dataclass
+class ActionsCancelled(DomainEvent):
+    """Pending actions have been cancelled."""
+
+    count: int = 0
+    source: Optional[str] = None
+
+    def describe(self) -> str:
+        src = f" (source: {self.source})" if self.source else ""
+        return f"Invoice {self.invoice_number}: {self.count} action(s) cancelled{src}"

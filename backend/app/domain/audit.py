@@ -2,7 +2,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 
 from dataclasses import dataclass
@@ -32,7 +32,7 @@ class AuditEvent:
         object.__setattr__(self, "description", description)
 
     @classmethod
-    def reconstitute(cls, **fields) -> "AuditEvent":
+    def reconstitute(cls, **fields: Any) -> "AuditEvent":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():
@@ -56,7 +56,7 @@ class Notification:
         self.is_read: bool = is_read
 
     @classmethod
-    def reconstitute(cls, **fields) -> "Notification":
+    def reconstitute(cls, **fields: Any) -> "Notification":
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():
