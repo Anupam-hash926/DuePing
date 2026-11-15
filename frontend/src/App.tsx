@@ -13,6 +13,7 @@ import { ClientsPage } from './pages/ClientsPage'
 import { ImportPage } from './pages/ImportPage'
 import { AuditPage } from './pages/AuditPage'
 import { DevUIPage } from './pages/DevUIPage'
+import { LandingPage } from './features/landing/LandingPage'
 
 const RedirectInvoice: React.FC = () => {
   const { id } = useParams()
@@ -46,8 +47,10 @@ export const App: React.FC = () => {
             {/* Hidden Dev UI Page */}
             <Route path="/__ui" element={<DevUIPage />} />
 
+            {/* Public Landing Page */}
+            <Route path="/" element={<LandingPage />} />
+
             {/* Legacy route redirects to /app/... */}
-            <Route path="/" element={<Navigate to="/app" replace />} />
             <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/invoices" element={<Navigate to="/app/invoices" replace />} />
             <Route path="/invoices/new" element={<Navigate to="/app/invoices/new" replace />} />
