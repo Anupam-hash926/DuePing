@@ -12,11 +12,12 @@ from typing import Dict, List, Optional
 from app.application.ports import (
     InvoiceRepository, ClientRepository, ProjectRepository,
     AuditRepository, NotificationRepository, SettingsRepository,
+    FailureLogRepository, HandlerFailure,
 )
 from app.domain.audit import AuditEvent, Notification
 from app.domain.client import Client
-from app.domain.enums import InvoiceStatus
-from app.domain.exceptions import EntityNotFound
+from app.domain.enums import ActionStatus, InvoiceStatus
+from app.domain.exceptions import ConcurrencyConflict, EntityNotFound
 from app.domain.invoice import Invoice
 from app.domain.project import Project
 
@@ -39,10 +40,28 @@ class InMemoryInvoiceRepository(InvoiceRepository):
         return None
 
     def save(self, invoice: Invoice) -> None:
+        if invoice.id in self._items:
+            expected_version = invoice.version
+            current_version = self._items[invoice.id].version
+            if current_version != expected_version:
+                raise ConcurrencyConflict(
+                    f"Invoice {invoice.id} was modified concurrently (expected version {expected_version}, found {current_version})"
+                )
+            invoice.version += 1
+        else:
+            invoice.version = 0
         self._items[invoice.id] = copy.deepcopy(invoice)
 
-    def list_all(self) -> List[Invoice]:
-        return [copy.deepcopy(inv) for inv in self._items.values()]
+    def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Invoice]:
+        items = [copy.deepcopy(inv) for inv in self._items.values()]
+        if offset:
+            items = items[offset:]
+        if limit is not None:
+            items = items[:limit]
+        return items
+
+    def count_all(self) -> int:
+        return len(self._items)
 
     def list_active(self) -> List[Invoice]:
         active_statuses = {
@@ -54,6 +73,19 @@ class InMemoryInvoiceRepository(InvoiceRepository):
             copy.deepcopy(inv)
             for inv in self._items.values()
             if inv.status in active_statuses
+        ]
+
+    def list_active_with_pending_actions(self) -> List[Invoice]:
+        active_statuses = {
+            InvoiceStatus.SENT,
+            InvoiceStatus.PARTIALLY_PAID,
+            InvoiceStatus.DISPUTED,
+        }
+        return [
+            copy.deepcopy(inv)
+            for inv in self._items.values()
+            if inv.status in active_statuses
+            and any(a.status == ActionStatus.PENDING for a in inv.actions)
         ]
 
     def list_by_client(self, client_id: str) -> List[Invoice]:
@@ -140,14 +172,24 @@ class InMemoryAuditRepository(AuditRepository):
     def add(self, event: AuditEvent) -> None:
         self._events.append(copy.deepcopy(event))
 
-    def list(self, invoice_id: Optional[str] = None, limit: int = 200) -> List[AuditEvent]:
+    def list(
+        self,
+        invoice_id: Optional[str] = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> List[AuditEvent]:
         # Newest first
         reversed_events = list(reversed(self._events))
         if invoice_id is not None:
             filtered = [e for e in reversed_events if e.invoice_id == invoice_id]
         else:
             filtered = reversed_events
-        return [copy.deepcopy(e) for e in filtered[:limit]]
+        return [copy.deepcopy(e) for e in filtered[offset : offset + limit]]
+
+    def count(self, invoice_id: Optional[str] = None) -> int:
+        if invoice_id is not None:
+            return sum(1 for e in self._events if e.invoice_id == invoice_id)
+        return len(self._events)
 
 
 class InMemoryNotificationRepository(NotificationRepository):
@@ -159,14 +201,28 @@ class InMemoryNotificationRepository(NotificationRepository):
     def add(self, n: Notification) -> None:
         self._items.append(copy.deepcopy(n))
 
-    def list(self, unread_only: bool = False) -> List[Notification]:
+    def list(
+        self,
+        unread_only: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[Notification]:
         # Newest first
         reversed_items = list(reversed(self._items))
         if unread_only:
             filtered = [n for n in reversed_items if not n.is_read]
         else:
             filtered = reversed_items
+        if offset:
+            filtered = filtered[offset:]
+        if limit is not None:
+            filtered = filtered[:limit]
         return [copy.deepcopy(n) for n in filtered]
+
+    def count(self, unread_only: bool = False) -> int:
+        if unread_only:
+            return sum(1 for n in self._items if not n.is_read)
+        return len(self._items)
 
     def mark_all_read(self) -> None:
         for n in self._items:
@@ -184,3 +240,20 @@ class InMemorySettingsRepository(SettingsRepository):
 
     def set(self, key: str, value: str) -> None:
         self._data[key] = str(value)
+
+
+class InMemoryFailureLogRepository(FailureLogRepository):
+    """In-memory store for listener execution failures."""
+
+    def __init__(self) -> None:
+        self._items: List[HandlerFailure] = []
+
+    def add(self, failure: HandlerFailure) -> None:
+        import uuid
+        f_copy = copy.deepcopy(failure)
+        if not f_copy.id:
+            f_copy.id = uuid.uuid4().hex
+        self._items.insert(0, f_copy)
+
+    def list(self, limit: int = 50) -> List[HandlerFailure]:
+        return [copy.deepcopy(f) for f in self._items[:limit]]

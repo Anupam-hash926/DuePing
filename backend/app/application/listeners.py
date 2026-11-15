@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import timedelta
 import logging
 
-from app.application.event_bus import EventBus, save_and_publish
+from app.application.event_bus import EventBus, mutate_invoice, save_and_publish
 from app.application.playbook import ResolutionPlaybook
 from app.application.ports import (
     AuditRepository, ClientRepository, Clock, InvoiceRepository,
@@ -95,15 +95,17 @@ class ActionGenerationListener:
             return
         client = self.client_repo.get(invoice.client_id)
         action = self.playbook.plan_for(blocker, invoice, client, self.clock.today())
-        invoice.add_action(action)
-        save_and_publish(self.invoice_repo, self.bus, invoice)
+        mutate_invoice(self.invoice_repo, self.bus, event.invoice_id, lambda inv: inv.add_action(action))
 
     def on_blocker_resolved(self, event: BlockerResolved) -> None:
         if not event.invoice_id:
             return
-        invoice = self.invoice_repo.get(event.invoice_id)
-        invoice.cancel_actions(source=ActionSource.BLOCKER, source_ref=event.blocker_id, now=event.occurred_at)
-        save_and_publish(self.invoice_repo, self.bus, invoice)
+        mutate_invoice(
+            self.invoice_repo,
+            self.bus,
+            event.invoice_id,
+            lambda inv: inv.cancel_actions(source=ActionSource.BLOCKER, source_ref=event.blocker_id, now=event.occurred_at),
+        )
 
     def on_promise_missed(self, event: PromiseMissed) -> None:
         if not event.invoice_id:
@@ -125,8 +127,7 @@ class ActionGenerationListener:
             created_at=self.clock.now(),
             source_ref=event.promise_id,
         )
-        invoice.add_action(action)
-        save_and_publish(self.invoice_repo, self.bus, invoice)
+        mutate_invoice(self.invoice_repo, self.bus, event.invoice_id, lambda inv: inv.add_action(action))
 
     def on_invoice_became_overdue(self, event: InvoiceBecameOverdue) -> None:
         if not event.invoice_id:
@@ -159,15 +160,17 @@ class ActionGenerationListener:
             source=ActionSource.OVERDUE,
             created_at=self.clock.now(),
         )
-        invoice.add_action(action)
-        save_and_publish(self.invoice_repo, self.bus, invoice)
+        mutate_invoice(self.invoice_repo, self.bus, event.invoice_id, lambda inv: inv.add_action(action))
 
     def on_invoice_closed(self, event: DomainEvent) -> None:
         if not event.invoice_id:
             return
-        invoice = self.invoice_repo.get(event.invoice_id)
-        invoice.cancel_actions(now=event.occurred_at)
-        save_and_publish(self.invoice_repo, self.bus, invoice)
+        mutate_invoice(
+            self.invoice_repo,
+            self.bus,
+            event.invoice_id,
+            lambda inv: inv.cancel_actions(now=event.occurred_at),
+        )
 
 
 class ReliabilityListener:

@@ -439,3 +439,11 @@ class NotificationRead(BaseModel):
     message: str
     created_at: datetime
     is_read: bool
+
+
+class HandlerFailureRead(BaseModel):
+    id: Optional[str] = None
+    occurred_at: datetime
+    event_type: str
+    handler: str
+    error: str

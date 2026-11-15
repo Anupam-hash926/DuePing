@@ -78,6 +78,7 @@ class InvoiceModel(Base):
     reminder_level: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     overdue_notified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Relationships
     client: Mapped[ClientModel] = relationship("ClientModel", back_populates="invoices")
@@ -244,3 +245,15 @@ class AppSettingsModel(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class HandlerFailureModel(Base):
+    """ORM table: handler_failures."""
+
+    __tablename__ = "handler_failures"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    handler: Mapped[str] = mapped_column(String(255), nullable=False)
+    error: Mapped[str] = mapped_column(Text, nullable=False)

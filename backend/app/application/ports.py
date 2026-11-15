@@ -6,6 +6,7 @@ concrete persistence implementations (Dependency Inversion Principle).
 """
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import date, datetime
 from typing import List, Optional
 
@@ -48,13 +49,23 @@ class InvoiceRepository(ABC):
         ...
 
     @abstractmethod
-    def list_all(self) -> List[Invoice]:
-        """List all invoices."""
+    def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Invoice]:
+        """List all invoices with optional pagination."""
+        ...
+
+    @abstractmethod
+    def count_all(self) -> int:
+        """Total count of all invoices."""
         ...
 
     @abstractmethod
     def list_active(self) -> List[Invoice]:
         """List active invoices (SENT, PARTIALLY_PAID, DISPUTED)."""
+        ...
+
+    @abstractmethod
+    def list_active_with_pending_actions(self) -> List[Invoice]:
+        """List active invoices that have at least one PENDING action."""
         ...
 
     @abstractmethod
@@ -130,8 +141,18 @@ class AuditRepository(ABC):
         ...
 
     @abstractmethod
-    def list(self, invoice_id: Optional[str] = None, limit: int = 200) -> List[AuditEvent]:
-        """List audit events ordered newest first."""
+    def list(
+        self,
+        invoice_id: Optional[str] = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> List[AuditEvent]:
+        """List audit events ordered newest first with pagination."""
+        ...
+
+    @abstractmethod
+    def count(self, invoice_id: Optional[str] = None) -> int:
+        """Count total audit events, optionally filtered by invoice."""
         ...
 
 
@@ -144,8 +165,18 @@ class NotificationRepository(ABC):
         ...
 
     @abstractmethod
-    def list(self, unread_only: bool = False) -> List[Notification]:
-        """List notifications, optionally filtering for unread only."""
+    def list(
+        self,
+        unread_only: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[Notification]:
+        """List notifications, optionally filtering for unread only with pagination."""
+        ...
+
+    @abstractmethod
+    def count(self, unread_only: bool = False) -> int:
+        """Count total notifications."""
         ...
 
     @abstractmethod
@@ -165,4 +196,29 @@ class SettingsRepository(ABC):
     @abstractmethod
     def set(self, key: str, value: str) -> None:
         """Set setting value."""
+        ...
+
+
+@dataclass
+class HandlerFailure:
+    """Record of a failed domain event handler."""
+
+    occurred_at: datetime
+    event_type: str
+    handler: str
+    error: str
+    id: Optional[str] = None
+
+
+class FailureLogRepository(ABC):
+    """Port for logging listener/handler failures."""
+
+    @abstractmethod
+    def add(self, failure: HandlerFailure) -> None:
+        """Record a handler failure."""
+        ...
+
+    @abstractmethod
+    def list(self, limit: int = 50) -> List[HandlerFailure]:
+        """List recent failures, newest first."""
         ...

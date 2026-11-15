@@ -24,3 +24,7 @@ class DuplicateInvoiceNumber(DomainError):
 
 class DuplicateClient(DomainError):
     """Raised when attempting to create or update a client with an existing email."""
+
+
+class ConcurrencyConflict(DomainError):
+    """Raised when an invoice modification conflicts with another concurrent modification."""

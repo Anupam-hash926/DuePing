@@ -74,10 +74,47 @@
 - **Package:** `app.application.facade`
 - **Responsibilities:**
   - Provide a single, cohesive API surface for all collections operations.
-  - Coordinate repository loading, domain aggregate mutation, event publishing, and query aggregation.
+  - Coordinate requests by delegating to focused command and system services.
   - Shield API routers and CLI scripts from subsystem complexity.
 - **Collaborators:**
-  - `InvoiceRepository`, `ClientRepository`, `ProjectRepository`, `AuditRepository`, `NotificationRepository`, `SettingsRepository`, `Clock`, `EventBus`, `ResolutionPlaybook`, `PrioritizationRegistry`, `ReminderFactory`, `InvoiceImporter`, `ReportService`, `ActionCenter`, `DailyCheckService`.
+  - `InvoiceCommands`, `ClientService`, `ReminderService`, `SystemService`, `ReportService`, `ActionCenter`, `InvoiceImporter`, `InvoiceRepository`.
+
+---
+
+### 7a. `InvoiceCommands` (Application Command Service)
+- **Package:** `app.application.services.invoice_commands`
+- **Responsibilities:**
+  - Execute and persist invoice aggregate state changes and child collection mutations.
+  - Safely mutate invoices under optimistic concurrency (`mutate_invoice`).
+- **Collaborators:**
+  - `InvoiceRepository`, `EventBus`, `Clock`, `Invoice`.
+
+---
+
+### 7b. `ClientService` (Application Service)
+- **Package:** `app.application.services.client_service`
+- **Responsibilities:**
+  - Manage client profiles, emails, phone numbers, and project associations.
+- **Collaborators:**
+  - `ClientRepository`, `ProjectRepository`, `Client`, `Project`.
+
+---
+
+### 7c. `ReminderService` (Application Service)
+- **Package:** `app.application.services.reminder_service`
+- **Responsibilities:**
+  - Generate customized communication reminders using the reminder factory.
+- **Collaborators:**
+  - `InvoiceRepository`, `ReminderFactory`, `GeneratedReminder`.
+
+---
+
+### 7d. `SystemService` (Application Service)
+- **Package:** `app.application.services.system_service`
+- **Responsibilities:**
+  - Manage simulated clock, system settings, daily checks, audit logs, notifications, handler failures, and test data reset.
+- **Collaborators:**
+  - `SettingsRepository`, `AuditRepository`, `NotificationRepository`, `FailureLogRepository`, `Clock`, `DailyCheckService`.
 
 ---
 

@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.domain.exceptions import (
+    ConcurrencyConflict,
     DomainValidationError,
     DuplicateClient,
     DuplicateInvoiceNumber,
@@ -53,6 +54,15 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DuplicateClient)
     async def duplicate_client_handler(
         request: Request, exc: DuplicateClient
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"error": {"code": exc.__class__.__name__, "message": str(exc)}},
+        )
+
+    @app.exception_handler(ConcurrencyConflict)
+    async def concurrency_conflict_handler(
+        request: Request, exc: ConcurrencyConflict
     ) -> JSONResponse:
         return JSONResponse(
             status_code=409,

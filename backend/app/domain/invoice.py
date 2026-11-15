@@ -49,6 +49,7 @@ class Invoice:
         reminder_level: int = 0,
         overdue_notified: bool = False,
         created_at: Optional[datetime] = None,
+        version: int = 0,
     ) -> None:
         if not invoice_number or not invoice_number.strip():
             raise DomainValidationError("Invoice number cannot be empty")
@@ -69,6 +70,7 @@ class Invoice:
         self.reminder_level: int = reminder_level
         self.overdue_notified: bool = overdue_notified
         self.created_at: datetime = created_at or now
+        self.version: int = version
 
         self._payments: List[Payment] = []
         self._blockers: List[PaymentBlocker] = []
@@ -94,6 +96,7 @@ class Invoice:
         obj.reminder_level = fields.get("reminder_level", 0)
         obj.overdue_notified = fields.get("overdue_notified", False)
         obj.created_at = fields["created_at"]
+        obj.version = fields.get("version", 0)
         obj._payments = list(fields.get("payments", []))
         obj._blockers = list(fields.get("blockers", []))
         obj._promises = list(fields.get("promises", []))

@@ -211,11 +211,15 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
    - In traditional naive designs, "OVERDUE" is treated as an invoice state. This introduces temporal coupling and polling bugs: an invoice becomes overdue purely because the clock ticked past midnight, not because an actor executed a state command.
    - In DuePing, `InvoiceStatus` contains only command-driven lifecycle stages (`DRAFT`, `SENT`, `PARTIALLY_PAID`, `DISPUTED`, `PAID`, `WRITTEN_OFF`). Overdue is a derived temporal query: `invoice.is_overdue(today)`. The `DailyCheckService` uses `Clock` to evaluate this condition and stage `InvoiceBecameOverdue` domain events without mutating the state machine.
 
-3. **Synchronous In-Process Domain Events:**
-   - Domain events are dispatched in-process via `EventBus`. The bus maintains an internal FIFO queue (`_queue`) and a dispatch flag (`_is_dispatching`) to prevent recursive reentrancy when listener handlers emit secondary domain events.
-   - Aggregate persistence and event listener effects are executed within the application service unit of work. While this provides synchronous guarantees for audit logging and task creation, listener side effects are designed to be eventually consistent: failures in secondary handlers do not rollback completed payments, and failed handler invocations are surfaced for monitoring (see Phase 4 C3).
+3. **Synchronous In-Process Domain Events & Eventual Consistency (Phase 4 C1–C3):**
+   - Domain events are dispatched in-process via `EventBus`. The bus maintains an internal queue and dispatch flag in thread-local storage (`threading.local()`) and thread-safe subscription locks (`threading.RLock`) to prevent recursive reentrancy and thread contention.
+   - Aggregate persistence and event listener effects are executed within the application service layer. While the primary aggregate mutation is committed first with optimistic concurrency versioning (`version: int` checked on save, mapped to 409 `ConcurrencyConflict`), listener side effects are design-wise **eventually consistent** (no distributed two-phase commit transaction): an exception raised in a secondary handler does not rollback the committed invoice mutation or disrupt other listeners. Instead, handler failures are caught, logged to `FailureLogRepository` (table `handler_failures`), retained in an in-memory ring buffer (`deque(maxlen=100)`), and surfaced via `GET /api/system/failures` for operational visibility.
 
-4. **Simple Factory Pattern for `InvoiceFactory` and `ReminderFactory`:**
+4. **Split Facade Pattern (Phase 4 C4):**
+   - In earlier versions, `CollectionFacade` grew into a high-coupling bottleneck (> 400 lines, 15 constructor parameters).
+   - In Phase 4, the facade was refactored to delegate directly to 4 cohesive application services (`InvoiceCommands`, `ClientService`, `ReminderService`, `SystemService`) plus dedicated query services (`ReportService`, `ActionCenter`, `InvoiceImporter`), reducing `CollectionFacade` to <= 150 lines with exactly 8 constructor dependencies while preserving 100% public API backwards compatibility.
+
+5. **Simple Factory Pattern for `InvoiceFactory` and `ReminderFactory`:**
    - Rather than introducing heavyweight Abstract Factory hierarchies with unnecessary indirection, `InvoiceFactory` and `ReminderFactory` use the *Simple Factory* idiom. They encapsulate creation rules, ID/sequence formatting, and tone selection policy without exposing callers to concrete instantiation details.
 
 ---

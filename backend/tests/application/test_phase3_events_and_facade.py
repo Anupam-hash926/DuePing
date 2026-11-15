@@ -8,6 +8,10 @@ from app.application.clock import SimulatedClock
 from app.application.daily_check import DailyCheckService
 from app.application.event_bus import EventBus
 from app.application.facade import CollectionFacade
+from app.application.services.client_service import ClientService
+from app.application.services.invoice_commands import InvoiceCommands
+from app.application.services.reminder_service import ReminderService
+from app.application.services.system_service import SystemService
 from app.application.importing import InvoiceImporter
 from app.application.invoice_factory import InvoiceFactory
 from app.application.listeners import (
@@ -70,22 +74,20 @@ def env():
     reliability_listener.register(bus)
     notification_listener.register(bus)
 
+    client_service = ClientService(client_repo, project_repo, invoice_repo, clock)
+    invoice_commands = InvoiceCommands(invoice_repo, client_repo, project_repo, invoice_factory, bus, clock)
+    reminder_service = ReminderService(reminder_factory, invoice_repo, client_repo, settings_repo, clock)
+    system_service = SystemService(clock, settings_repo, audit_repo, notification_repo, daily_check)
+
     facade = CollectionFacade(
-        invoice_repo=invoice_repo,
-        client_repo=client_repo,
-        project_repo=project_repo,
-        audit_repo=audit_repo,
-        notification_repo=notification_repo,
-        settings_repo=settings_repo,
-        clock=clock,
-        event_bus=bus,
-        action_center=action_center,
-        reminder_factory=reminder_factory,
-        invoice_factory=invoice_factory,
-        invoice_importer=importer,
+        invoice_commands=invoice_commands,
+        client_service=client_service,
+        reminder_service=reminder_service,
+        system_service=system_service,
         report_service=report_service,
-        daily_check_service=daily_check,
-        playbook=playbook,
+        action_center=action_center,
+        invoice_importer=importer,
+        invoice_repo=invoice_repo,
     )
 
     return {

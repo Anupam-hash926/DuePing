@@ -361,26 +361,19 @@ classDiagram
 
 ### 7. Facade Pattern
 
-Unifies application operations behind a cohesive, single-point entry for API routers and external clients.
+Unifies application operations behind a cohesive, single-point entry for API routers and external clients, delegating to 4 focused command and system services plus query handlers (keeping the Facade <= 150 lines with 8 constructor dependencies).
 
 ```mermaid
 classDiagram
     class CollectionFacade {
-        -InvoiceRepository invoice_repo
-        -ClientRepository client_repo
-        -ProjectRepository project_repo
-        -AuditRepository audit_repo
-        -NotificationRepository notification_repo
-        -SettingsRepository settings_repo
-        -Clock clock
-        -EventBus event_bus
-        -ResolutionPlaybook playbook
-        -PrioritizationRegistry registry
-        -ReminderFactory reminder_factory
-        -InvoiceImporter importer
+        -InvoiceCommands invoice_commands
+        -ClientService client_service
+        -ReminderService reminder_service
+        -SystemService system_service
         -ReportService report_service
         -ActionCenter action_center
-        -DailyCheckService daily_check_service
+        -InvoiceImporter invoice_importer
+        -InvoiceRepository invoice_repo
         +create_invoice(...)
         +send_invoice(...)
         +record_payment(...)
@@ -392,6 +385,50 @@ classDiagram
         +get_dashboard(...)
         +import_invoices(...)
     }
+
+    class InvoiceCommands {
+        -InvoiceRepository invoice_repo
+        -EventBus event_bus
+        -Clock clock
+        +create_invoice(...)
+        +send_invoice(...)
+        +record_payment(...)
+        +raise_blocker(...)
+        +resolve_blocker(...)
+        +record_promise(...)
+    }
+
+    class ClientService {
+        -ClientRepository client_repo
+        -ProjectRepository project_repo
+        +create_client(...)
+        +create_project(...)
+    }
+
+    class ReminderService {
+        -InvoiceRepository invoice_repo
+        -ReminderFactory reminder_factory
+        +generate_reminder(...)
+    }
+
+    class SystemService {
+        -SettingsRepository settings_repo
+        -AuditRepository audit_repo
+        -NotificationRepository notification_repo
+        -FailureLogRepository failure_log_repo
+        -Clock clock
+        -DailyCheckService daily_check_service
+        +run_daily_check(...)
+        +list_audit(...)
+        +list_notifications(...)
+        +list_failures(...)
+        +reset_demo_data(...)
+    }
+
+    CollectionFacade --> InvoiceCommands : delegates mutations
+    CollectionFacade --> ClientService : delegates client ops
+    CollectionFacade --> ReminderService : delegates reminder gen
+    CollectionFacade --> SystemService : delegates system/audit/clock ops
 ```
 
 ---

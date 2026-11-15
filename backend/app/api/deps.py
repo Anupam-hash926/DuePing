@@ -25,10 +25,15 @@ from app.application.playbook import ResolutionPlaybook
 from app.application.prioritization import PrioritizationRegistry
 from app.application.reminders import ReminderFactory
 from app.application.reports import ReportService
+from app.application.services.client_service import ClientService
+from app.application.services.invoice_commands import InvoiceCommands
+from app.application.services.reminder_service import ReminderService
+from app.application.services.system_service import SystemService
 from app.infrastructure.db import SessionLocal
 from app.infrastructure.sqlalchemy_repositories import (
     SqlAlchemyAuditRepository,
     SqlAlchemyClientRepository,
+    SqlAlchemyFailureLogRepository,
     SqlAlchemyInvoiceRepository,
     SqlAlchemyNotificationRepository,
     SqlAlchemyProjectRepository,
@@ -44,11 +49,12 @@ def create_app_facade() -> CollectionFacade:
     settings_repo = SqlAlchemySettingsRepository(SessionLocal)
     audit_repo = SqlAlchemyAuditRepository(SessionLocal)
     notification_repo = SqlAlchemyNotificationRepository(SessionLocal)
+    failure_repo = SqlAlchemyFailureLogRepository(SessionLocal)
 
     clock = SimulatedClock(settings_repo)
     playbook = ResolutionPlaybook()
     registry = PrioritizationRegistry()
-    bus = EventBus()
+    bus = EventBus(failure_log=failure_repo)
     reminder_factory = ReminderFactory()
     invoice_factory = InvoiceFactory(invoice_repo)
 
@@ -85,29 +91,50 @@ def create_app_facade() -> CollectionFacade:
         clock=clock,
     )
 
-    facade = CollectionFacade(
+    client_service = ClientService(
+        client_repo=client_repo,
+        project_repo=project_repo,
+        invoice_repo=invoice_repo,
+        clock=clock,
+    )
+    invoice_commands = InvoiceCommands(
         invoice_repo=invoice_repo,
         client_repo=client_repo,
         project_repo=project_repo,
-        audit_repo=audit_repo,
-        notification_repo=notification_repo,
+        invoice_factory=invoice_factory,
+        event_bus=bus,
+        clock=clock,
+    )
+    reminder_service = ReminderService(
+        reminder_factory=reminder_factory,
+        invoice_repo=invoice_repo,
+        client_repo=client_repo,
         settings_repo=settings_repo,
         clock=clock,
-        event_bus=bus,
-        action_center=action_center,
-        reminder_factory=reminder_factory,
-        invoice_factory=invoice_factory,
-        invoice_importer=importer,
-        report_service=report_service,
+    )
+    system_service = SystemService(
+        clock=clock,
+        settings_repo=settings_repo,
+        audit_repo=audit_repo,
+        notification_repo=notification_repo,
         daily_check_service=daily_check,
-        playbook=playbook,
-        reset_demo_callable=None,
+        failure_log_repo=failure_repo,
+        reset_callable=None,
     )
 
-    # Attach reset_demo_data
-    from app.infrastructure.seed import reset_demo_data
+    facade = CollectionFacade(
+        invoice_commands=invoice_commands,
+        client_service=client_service,
+        reminder_service=reminder_service,
+        system_service=system_service,
+        report_service=report_service,
+        action_center=action_center,
+        invoice_importer=importer,
+        invoice_repo=invoice_repo,
+    )
 
-    facade.reset_demo_callable = lambda: reset_demo_data(facade)
+    from app.infrastructure.seed import reset_demo_data
+    system_service.reset_callable = lambda: reset_demo_data(facade)
 
     return facade
 

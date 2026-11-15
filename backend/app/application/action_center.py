@@ -60,7 +60,7 @@ class ActionCenter:
                 client_cache[cid] = self.client_repo.get(cid)
             return client_cache[cid]
 
-        active_invoices = self.invoice_repo.list_active()
+        active_invoices = self.invoice_repo.list_active_with_pending_actions()
         items: List[ActionCenterItem] = []
         upcoming: List[ActionCenterItem] = []
 

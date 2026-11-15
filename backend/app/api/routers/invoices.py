@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import get_facade
 from app.api.presenters import (
@@ -54,18 +54,25 @@ def _present_invoice(facade: CollectionFacade, invoice: Invoice) -> InvoiceRead:
 
 @router.get("/invoices", response_model=List[InvoiceSummaryRead])
 def list_invoices(
+    response: Response,
     status: Optional[str] = Query(None),
     client_id: Optional[str] = Query(None),
     overdue: Optional[bool] = Query(None),
     q: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     facade: CollectionFacade = Depends(get_facade),
 ) -> List[InvoiceSummaryRead]:
     status_enum = InvoiceStatus[status] if status else None
+    total = facade.count_invoices()
+    response.headers["X-Total-Count"] = str(total)
     invoices = facade.list_invoices(
         status=status_enum,
         client_id=client_id,
         overdue_only=bool(overdue) if overdue is not None else False,
         search=q,
+        limit=limit,
+        offset=offset,
     )
     today = facade.clock.today()
 

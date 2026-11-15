@@ -12,7 +12,8 @@ from app.domain.enums import (
     ActionSource, BlockerType, Channel, DocumentType, FollowUpOutcome,
     InvoiceStatus, PaymentMethod, Priority,
 )
-from app.domain.exceptions import EntityNotFound
+from app.domain.exceptions import ConcurrencyConflict, EntityNotFound
+from app.application.ports import HandlerFailure
 from app.domain.invoice import Invoice
 from app.domain.money import Money
 from app.domain.next_action import NextAction
@@ -20,12 +21,12 @@ from app.domain.payment import Payment
 from app.domain.project import Project
 from app.infrastructure.db import Base
 from app.infrastructure.in_memory_repositories import (
-    InMemoryAuditRepository, InMemoryClientRepository,
+    InMemoryAuditRepository, InMemoryClientRepository, InMemoryFailureLogRepository,
     InMemoryInvoiceRepository, InMemoryNotificationRepository,
     InMemoryProjectRepository, InMemorySettingsRepository,
 )
 from app.infrastructure.sqlalchemy_repositories import (
-    SqlAlchemyAuditRepository, SqlAlchemyClientRepository,
+    SqlAlchemyAuditRepository, SqlAlchemyClientRepository, SqlAlchemyFailureLogRepository,
     SqlAlchemyInvoiceRepository, SqlAlchemyNotificationRepository,
     SqlAlchemyProjectRepository, SqlAlchemySettingsRepository,
 )
@@ -43,6 +44,7 @@ def repo_bundle(request):
             "audit_repo": InMemoryAuditRepository(),
             "notification_repo": InMemoryNotificationRepository(),
             "settings_repo": InMemorySettingsRepository(),
+            "failure_repo": InMemoryFailureLogRepository(),
             "backend": "in_memory",
         }
     else:
@@ -63,6 +65,7 @@ def repo_bundle(request):
             "audit_repo": SqlAlchemyAuditRepository(session_factory),
             "notification_repo": SqlAlchemyNotificationRepository(session_factory),
             "settings_repo": SqlAlchemySettingsRepository(session_factory),
+            "failure_repo": SqlAlchemyFailureLogRepository(session_factory),
             "session_factory": session_factory,
             "engine": engine,
             "backend": "sqlite",
@@ -284,6 +287,88 @@ class TestInvoiceRepositoryContract:
         assert len(active) == 1
         assert active[0].invoice_number == "DP-2026-0011"
 
+    def test_optimistic_locking_conflict(self, repo_bundle):
+        c_repo = repo_bundle["client_repo"]
+        inv_repo = repo_bundle["invoice_repo"]
+        client = Client("Opt Lock Corp", "opt@lock.com")
+        c_repo.save(client)
+
+        inv = Invoice("DP-2026-0040", client.id, Money.of(5000), TODAY, TODAY, NOW)
+        inv_repo.save(inv)
+        assert inv.version == 0
+
+        # Load two copies concurrently
+        inv1 = inv_repo.get(inv.id)
+        inv2 = inv_repo.get(inv.id)
+        assert inv1.version == 0
+        assert inv2.version == 0
+
+        # inv1 updates and saves
+        inv1.send(NOW)
+        inv_repo.save(inv1)
+        assert inv1.version == 1
+
+        # inv2 tries to update and save with stale version 0
+        inv2.send(NOW)
+        with pytest.raises(ConcurrencyConflict):
+            inv_repo.save(inv2)
+
+    def test_invoice_pagination_and_count(self, repo_bundle):
+        c_repo = repo_bundle["client_repo"]
+        inv_repo = repo_bundle["invoice_repo"]
+        client = Client("Page Client", "page@client.com")
+        c_repo.save(client)
+
+        for i in range(5):
+            inv = Invoice(f"DP-2026-050{i}", client.id, Money.of(1000 * (i + 1)), TODAY, TODAY, NOW)
+            inv_repo.save(inv)
+
+        assert inv_repo.count_all() == 5
+        page1 = inv_repo.list_all(limit=2, offset=0)
+        assert len(page1) == 2
+        page2 = inv_repo.list_all(limit=2, offset=2)
+        assert len(page2) == 2
+        page3 = inv_repo.list_all(limit=2, offset=4)
+        assert len(page3) == 1
+        page_empty = inv_repo.list_all(limit=2, offset=10)
+        assert len(page_empty) == 0
+
+    def test_list_active_with_pending_actions(self, repo_bundle):
+        c_repo = repo_bundle["client_repo"]
+        inv_repo = repo_bundle["invoice_repo"]
+        client = Client("Actions Client", "act@client.com")
+        c_repo.save(client)
+
+        # 1. Active with pending action
+        inv1 = Invoice("DP-2026-0601", client.id, Money.of(1000), TODAY, TODAY, NOW)
+        inv1.send(NOW)
+        inv1.add_action(NextAction("Call client", Priority.HIGH, TODAY, ActionSource.MANUAL, NOW))
+        inv_repo.save(inv1)
+
+        # 2. Active without actions
+        inv2 = Invoice("DP-2026-0602", client.id, Money.of(2000), TODAY, TODAY, NOW)
+        inv2.send(NOW)
+        inv_repo.save(inv2)
+
+        # 3. Active with completed action
+        inv3 = Invoice("DP-2026-0603", client.id, Money.of(3000), TODAY, TODAY, NOW)
+        inv3.send(NOW)
+        act = NextAction("Resolved call", Priority.LOW, TODAY, ActionSource.MANUAL, NOW)
+        inv3.add_action(act)
+        inv3.complete_action(act.id, NOW)
+        inv_repo.save(inv3)
+
+        # 4. Inactive (Paid) with pending action
+        inv4 = Invoice("DP-2026-0604", client.id, Money.of(4000), TODAY, TODAY, NOW)
+        inv4.send(NOW)
+        inv4.add_action(NextAction("Old action", Priority.LOW, TODAY, ActionSource.MANUAL, NOW))
+        inv4.record_payment(Payment(Money.of(4000), TODAY, PaymentMethod.UPI, NOW), TODAY, NOW)
+        inv_repo.save(inv4)
+
+        result = inv_repo.list_active_with_pending_actions()
+        assert len(result) == 1
+        assert result[0].id == inv1.id
+
 
 # ── Audit, Notification, Settings Repository Contracts ────────────────────────
 
@@ -324,6 +409,46 @@ class TestAuxiliaryRepositoriesContract:
         assert repo.get("custom_key", "default_val") == "default_val"
         repo.set("custom_key", "stored_val")
         assert repo.get("custom_key") == "stored_val"
+
+    def test_audit_pagination_and_count(self, repo_bundle):
+        repo = repo_bundle["audit_repo"]
+        for i in range(5):
+            repo.add(AuditEvent("TestEv", f"Desc {i}", NOW + timedelta(seconds=i), invoice_id="inv-p"))
+        assert repo.count(invoice_id="inv-p") == 5
+        p1 = repo.list(invoice_id="inv-p", limit=2, offset=0)
+        assert len(p1) == 2
+        p2 = repo.list(invoice_id="inv-p", limit=2, offset=2)
+        assert len(p2) == 2
+        p3 = repo.list(invoice_id="inv-p", limit=2, offset=4)
+        assert len(p3) == 1
+
+    def test_notification_pagination_and_count(self, repo_bundle):
+        repo = repo_bundle["notification_repo"]
+        for i in range(5):
+            repo.add(Notification(f"Notif {i}", NOW + timedelta(seconds=i)))
+        assert repo.count() == 5
+        assert repo.count(unread_only=True) == 5
+        p1 = repo.list(limit=2, offset=0)
+        assert len(p1) == 2
+        p2 = repo.list(limit=2, offset=2)
+        assert len(p2) == 2
+
+    def test_failure_log_repository_contract(self, repo_bundle):
+        repo = repo_bundle["failure_repo"]
+        f1 = HandlerFailure(NOW, "InvoiceSent", "on_invoice_sent", "Connection refused")
+        f2 = HandlerFailure(NOW + timedelta(seconds=1), "PaymentReceived", "on_payment", "Timeout")
+        repo.add(f1)
+        repo.add(f2)
+
+        failures = repo.list(limit=10)
+        assert len(failures) == 2
+        # Newest first
+        assert failures[0].event_type == "PaymentReceived"
+        assert failures[1].event_type == "InvoiceSent"
+
+        limited = repo.list(limit=1)
+        assert len(limited) == 1
+        assert limited[0].event_type == "PaymentReceived"
 
     def test_next_invoice_sequence_uses_max_suffix(self, repo_bundle):
         repo = repo_bundle["invoice_repo"]

@@ -251,6 +251,7 @@ def model_to_invoice(m: InvoiceModel) -> Invoice:
         reminder_level=m.reminder_level,
         overdue_notified=m.overdue_notified,
         created_at=m.created_at,
+        version=m.version,
         payments=payments,
         blockers=blockers,
         promises=promises,
