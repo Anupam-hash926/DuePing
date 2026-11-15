@@ -25,6 +25,10 @@
 | **ADD-8** | Thread-safe `EventBus` | Thread-safe subscription registry with `threading.RLock`, reentrancy queue and dispatch state in `threading.local()`, and failure buffer in `collections.deque(maxlen=100)`. |
 | **ADD-9** | Visible listener failures | Port `FailureLogRepository` and endpoint `GET /api/system/failures` to track listener exceptions without failing unrelated handlers or silently swallowing errors. |
 | **ADD-10**| Pagination and cheap query filtering | Added `limit`/`offset` and `X-Total-Count` headers to `/api/invoices`, `/api/audit-log`, `/api/notifications`, and added `list_active_with_pending_actions()` to avoid loading unnecessary aggregates in ActionCenter. |
+| **ADD-11**| React Query data layer | Replaced `window.dispatchEvent('dueping:refresh')` and manual `useEffect` fetchers with `@tanstack/react-query` and declarative invalidation hooks. |
+| **ADD-12**| Strict $\le$ 250-line component architecture | Decomposed large monolithic pages (`InvoiceDetailPage` from 1,261 lines into 10 modular panels; `NewInvoicePage` with extracted client sheet) with max component size $\le$ 238 lines. |
+| **ADD-13**| iOS 7 / Apple Design System & Tokens | Standardized on tokens CSS variables (`--tint: #007AFF`, `--bg-grouped`, hairlines, squircle radiuses), eliminating hardcoded `slate-*`/`indigo-*` utility classes. |
+| **ADD-14**| Route-level code splitting | Implemented `React.lazy` across all application and landing routes, reducing initial core bundle to 160 kB gzipped and landing page to 11 kB gzipped. |
 
 ---
 

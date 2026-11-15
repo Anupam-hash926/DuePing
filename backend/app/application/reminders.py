@@ -4,17 +4,17 @@
 Templates produce blocker-aware follow-up messages across 3 progressive tones.
 """
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, List, Optional
 
 from app.domain.client import Client
 from app.domain.enums import BlockerType, PromiseStatus, ReminderTone
 from app.domain.invoice import Invoice
 from app.domain.money import Money
 
-BLOCKER_LINES: Dict[BlockerType, str] = {
+BLOCKER_LINES: dict[BlockerType, str] = {
     BlockerType.MISSING_PO: (
         "I understand the purchase order for this invoice is still pending. "
         "Could you share it so the payment can be released?"
@@ -48,15 +48,15 @@ BLOCKER_LINES: Dict[BlockerType, str] = {
 @dataclass(frozen=True)
 class ReminderContext:
     client_name: str
-    company_name: Optional[str]
+    company_name: str | None
     invoice_number: str
     outstanding: Money
     due_date: date
     days_overdue: int
     today: date
     sender_name: str
-    open_blocker_types: List[BlockerType]
-    missed_promise_date: Optional[date]
+    open_blocker_types: list[BlockerType]
+    missed_promise_date: date | None
 
 
 @dataclass(frozen=True)
@@ -307,7 +307,7 @@ class ReminderFactory:
         client: Client,
         sender_name: str,
         today: date,
-        tone: Optional[ReminderTone] = None,
+        tone: ReminderTone | None = None,
     ) -> GeneratedReminder:
         """Generate a complete subject + body reminder."""
         effective_tone = tone if tone is not None else self.tone_for(invoice, today)

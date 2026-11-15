@@ -1,13 +1,13 @@
 """FollowUp — immutable log entry of a client contact."""
 from __future__ import annotations
+
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.domain.enums import Channel, FollowUpOutcome
 
-
-from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class FollowUp:
@@ -25,7 +25,7 @@ class FollowUp:
         channel: Channel,
         notes: str,
         outcome: FollowUpOutcome,
-        id: Optional[str] = None,
+        id: str | None = None,
     ) -> None:
         object.__setattr__(self, "id", id or uuid.uuid4().hex)
         object.__setattr__(self, "contact_date", contact_date)
@@ -34,7 +34,7 @@ class FollowUp:
         object.__setattr__(self, "outcome", outcome)
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "FollowUp":
+    def reconstitute(cls, **fields: Any) -> FollowUp:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

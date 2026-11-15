@@ -1,7 +1,7 @@
 """System, clock, audit, notifications, settings, and reset API endpoints."""
 from __future__ import annotations
 
-from typing import List, Optional
+import os
 
 from fastapi import APIRouter, Depends, Query, Response
 
@@ -86,39 +86,39 @@ def update_settings(
     )
 
 
-@router.get("/audit-log", response_model=List[AuditEventRead])
+@router.get("/audit-log", response_model=list[AuditEventRead])
 def list_audit(
     response: Response,
-    invoice_id: Optional[str] = Query(None),
+    invoice_id: str | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     facade: CollectionFacade = Depends(get_facade),
-) -> List[AuditEventRead]:
+) -> list[AuditEventRead]:
     total = facade.count_audit(invoice_id=invoice_id)
     response.headers["X-Total-Count"] = str(total)
     events = facade.list_audit(invoice_id=invoice_id, limit=limit, offset=offset)
     return [audit_event_to_dto(ev) for ev in events]
 
 
-@router.get("/notifications", response_model=List[NotificationRead])
+@router.get("/notifications", response_model=list[NotificationRead])
 def list_notifications(
     response: Response,
     unread: bool = Query(False),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     facade: CollectionFacade = Depends(get_facade),
-) -> List[NotificationRead]:
+) -> list[NotificationRead]:
     total = facade.count_notifications(unread_only=unread)
     response.headers["X-Total-Count"] = str(total)
     notifications = facade.list_notifications(unread_only=unread, limit=limit, offset=offset)
     return [notification_to_dto(n) for n in notifications]
 
 
-@router.get("/system/failures", response_model=List[HandlerFailureRead])
+@router.get("/system/failures", response_model=list[HandlerFailureRead])
 def list_failures(
     limit: int = Query(50, ge=1, le=500),
     facade: CollectionFacade = Depends(get_facade),
-) -> List[HandlerFailureRead]:
+) -> list[HandlerFailureRead]:
     failures = facade.list_failures(limit=limit)
     return [
         HandlerFailureRead(
@@ -139,8 +139,6 @@ def mark_notifications_read(
     facade.mark_notifications_read()
     return SuccessResponse(ok=True)
 
-
-import os
 
 if os.getenv("DUEPING_ENABLE_RESET", "0").lower() in ("1", "true"):
     @router.post("/system/reset-demo", response_model=SuccessResponse)

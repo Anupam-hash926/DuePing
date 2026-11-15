@@ -1,8 +1,6 @@
 """Action Centre API endpoints."""
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_facade
@@ -15,7 +13,7 @@ router = APIRouter(tags=["action-center"])
 
 @router.get("/action-center", response_model=ActionCenterRead)
 def get_action_center(
-    strategy: Optional[str] = Query(None),
+    strategy: str | None = Query(None),
     facade: CollectionFacade = Depends(get_facade),
 ) -> ActionCenterRead:
     view = facade.get_action_center(strategy_key=strategy)

@@ -1,9 +1,11 @@
 """Client aggregate — represents a client with payment reliability tracking."""
 from __future__ import annotations
+
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from app.domain.exceptions import DomainValidationError
 from app.domain.money import Money
@@ -17,8 +19,8 @@ class Client:
     id: str
     name: str
     email: str
-    phone: Optional[str]
-    company_name: Optional[str]
+    phone: str | None
+    company_name: str | None
     promises_kept: int
     promises_missed: int
     created_at: datetime
@@ -27,12 +29,12 @@ class Client:
         self,
         name: str,
         email: str,
-        phone: Optional[str] = None,
-        company_name: Optional[str] = None,
-        id: Optional[str] = None,
+        phone: str | None = None,
+        company_name: str | None = None,
+        id: str | None = None,
         promises_kept: int = 0,
         promises_missed: int = 0,
-        created_at: Optional[datetime] = None,
+        created_at: datetime | None = None,
     ) -> None:
         if not name or not name.strip():
             raise DomainValidationError("Client name cannot be empty")
@@ -48,7 +50,7 @@ class Client:
         self.created_at = created_at or datetime(2024, 1, 1)  # placeholder; real clock injected above
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "Client":
+    def reconstitute(cls, **fields: Any) -> Client:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():
@@ -57,10 +59,10 @@ class Client:
 
     def update_contact_details(
         self,
-        name: Optional[str] = None,
-        email: Optional[str] = None,
-        phone: Optional[str] = None,
-        company_name: Optional[str] = None,
+        name: str | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        company_name: str | None = None,
     ) -> None:
         """Update contact details with validation."""
         if name is not None:
@@ -109,7 +111,7 @@ class Client:
             InvoiceStatus.PARTIALLY_PAID,
             InvoiceStatus.DISPUTED,
         }
-        total: Optional[Money] = None
+        total: Money | None = None
         for inv in invoices:
             if inv.status in active_statuses:
                 if total is None:

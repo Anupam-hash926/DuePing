@@ -6,10 +6,8 @@ ReminderFactory, InvoiceFactory, Importer, ReportService, and DailyCheckService.
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from app.application.action_center import ActionCenter
-from app.application.clock import SimulatedClock, SystemClock
+from app.application.clock import SimulatedClock
 from app.application.daily_check import DailyCheckService
 from app.application.event_bus import EventBus
 from app.application.facade import CollectionFacade
@@ -140,7 +138,7 @@ def create_app_facade() -> CollectionFacade:
 
 
 # Application singleton
-_facade_instance: Optional[CollectionFacade] = None
+_facade_instance: CollectionFacade | None = None
 
 
 def get_facade() -> CollectionFacade:
@@ -151,7 +149,7 @@ def get_facade() -> CollectionFacade:
     return _facade_instance
 
 
-def set_facade(facade: Optional[CollectionFacade]) -> None:
+def set_facade(facade: CollectionFacade | None) -> None:
     """Set or reset the global facade instance (used in tests/fixtures)."""
     global _facade_instance
     _facade_instance = facade

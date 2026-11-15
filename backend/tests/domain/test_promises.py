@@ -1,14 +1,13 @@
 """Tests for PaymentPromise domain entity."""
+from datetime import timedelta
+
 import pytest
-from datetime import date, datetime, timedelta
 
-from app.domain.promise import PaymentPromise
 from app.domain.enums import PromiseStatus
-from app.domain.exceptions import InvalidStateTransition, DomainValidationError
+from app.domain.exceptions import DomainValidationError, InvalidStateTransition
 from app.domain.money import Money
-
-from tests.domain.conftest import TODAY, NOW, make_invoice, make_payment
-
+from app.domain.promise import PaymentPromise
+from tests.domain.conftest import NOW, TODAY, make_invoice, make_payment
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -134,7 +133,7 @@ class TestCheckPromises:
 
     def test_check_promises_idempotent(self):
         inv = sent_invoice()
-        p = inv.record_promise(TOMORROW, TODAY, NOW)
+        inv.record_promise(TOMORROW, TODAY, NOW)
         after_due = TOMORROW + timedelta(days=1)
         inv.check_promises(after_due, NOW)
         # Second call should not raise and missed list should be empty
@@ -218,7 +217,7 @@ class TestPaymentPromiseUnit:
         assert p.id == "abc"
 
     def test_full_late_payment_marks_pending_promise_missed_and_penalises_reliability(self):
-        from app.domain.events import PromiseMissed, PaymentReceived, InvoicePaid
+        from app.domain.events import PromiseMissed
         inv = sent_invoice(total=100_000)
         # Promised for yesterday
         promise = inv.record_promise(YESTERDAY, YESTERDAY - timedelta(days=1), NOW)
@@ -250,8 +249,8 @@ class TestPaymentPromiseUnit:
         assert PromiseKept in event_types
 
     def test_event_order_on_full_payment(self):
-        from app.domain.events import PaymentReceived, PromiseMissed, BlockerResolved, InvoicePaid
         from app.domain.enums import BlockerType
+        from app.domain.events import BlockerResolved, InvoicePaid, PaymentReceived, PromiseMissed
         inv = sent_invoice(total=100_000)
         inv.record_promise(YESTERDAY, YESTERDAY - timedelta(days=1), NOW)
         inv.raise_blocker(BlockerType.MISSING_PO, "Missing PO", None, NOW)

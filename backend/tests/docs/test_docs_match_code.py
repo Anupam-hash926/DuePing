@@ -52,6 +52,15 @@ ALLOW_LIST = {
     "CollectionService",  # Naive design flaw analyzed in report notes
     "PersistencePort",  # Monolithic anti-pattern analyzed in ISP section
     "DUEPING_ENABLE_RESET",  # Environment variable for demo reset
+    # Frontend React components
+    "AppShell",
+    "DashboardPage",
+    "FocusCard",
+    "InvoiceDetailPage",
+    "LandingPage",
+    "NewInvoicePage",
+    "ReminderPanel",
+    "StatusStepper",
 }
 
 
@@ -64,7 +73,7 @@ def test_docs_match_code() -> None:
         for f in files:
             if f.endswith(".py"):
                 path = os.path.join(root, f)
-                with open(path, "r", encoding="utf-8") as fp:
+                with open(path, encoding="utf-8") as fp:
                     tree = ast.parse(fp.read(), filename=path)
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.ClassDef, ast.FunctionDef)):
@@ -97,7 +106,7 @@ def test_docs_match_code() -> None:
 
     for doc_path in doc_files:
         rel_path = os.path.relpath(doc_path, repo_root)
-        with open(doc_path, "r", encoding="utf-8") as fp:
+        with open(doc_path, encoding="utf-8") as fp:
             content = fp.read()
 
         extracted: set[str] = set()

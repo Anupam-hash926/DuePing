@@ -5,13 +5,14 @@ Allows reading diverse data sources via standard iterator and validates row data
 step-by-step before invoking InvoiceFactory.
 """
 from __future__ import annotations
-from abc import ABC, abstractmethod
+
 import csv
+import io
+from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-import io
-from typing import Dict, Iterator, List, Optional, Set
 
 from app.application.invoice_factory import InvoiceFactory
 from app.application.ports import ClientRepository, InvoiceRepository, ProjectRepository
@@ -26,7 +27,7 @@ class RawInvoiceRow:
     """Target data row representation produced by invoice sources."""
 
     row_number: int
-    data: Dict[str, str]
+    data: dict[str, str]
 
 
 class InvoiceSource(ABC):
@@ -41,7 +42,7 @@ class InvoiceSource(ABC):
         ...
 
     @abstractmethod
-    def file_errors(self) -> List[str]:
+    def file_errors(self) -> list[str]:
         """Return structural or header-level file errors (e.g., missing required headers)."""
         ...
 
@@ -62,7 +63,7 @@ class CsvInvoiceSource(InvoiceSource):
 
     def __init__(self, content: str) -> None:
         self._content = content
-        self._file_errors: List[str] = []
+        self._file_errors: list[str] = []
         self._validate_headers()
 
     def _validate_headers(self) -> None:
@@ -83,7 +84,7 @@ class CsvInvoiceSource(InvoiceSource):
         if missing:
             self._file_errors.append(f"Missing required CSV headers: {', '.join(sorted(missing))}")
 
-    def file_errors(self) -> List[str]:
+    def file_errors(self) -> list[str]:
         return list(self._file_errors)
 
     def read_rows(self) -> Iterator[RawInvoiceRow]:
@@ -99,7 +100,7 @@ class CsvInvoiceSource(InvoiceSource):
         field_map = {fn: fn.strip().lower() for fn in reader.fieldnames if fn}
 
         for row_idx, row in enumerate(reader, start=1):
-            normalized_row: Dict[str, str] = {}
+            normalized_row: dict[str, str] = {}
             for k, v in row.items():
                 if k in field_map:
                     normalized_row[field_map[k]] = v.strip() if v else ""
@@ -121,9 +122,9 @@ class InvoiceSourceFactory:
 
 @dataclass
 class ValidationContext:
-    errors: List[str] = field(default_factory=list)
-    parsed: Dict[str, object] = field(default_factory=dict)
-    seen_numbers: Set[str] = field(default_factory=set)
+    errors: list[str] = field(default_factory=list)
+    parsed: dict[str, object] = field(default_factory=dict)
+    seen_numbers: set[str] = field(default_factory=set)
 
 
 class RowValidator(ABC):
@@ -133,7 +134,7 @@ class RowValidator(ABC):
     """
 
     def __init__(self) -> None:
-        self._next: Optional[RowValidator] = None
+        self._next: RowValidator | None = None
 
     def set_next(self, validator: RowValidator) -> RowValidator:
         self._next = validator
@@ -172,7 +173,7 @@ class ClientDataValidator(RowValidator):
 class DateValidator(RowValidator):
     """Parses issue_date and due_date (YYYY-MM-DD or DD/MM/YYYY) and asserts due_date >= issue_date."""
 
-    def _parse_date(self, val: str) -> Optional[date]:
+    def _parse_date(self, val: str) -> date | None:
         val = val.strip()
         for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
             try:
@@ -258,7 +259,7 @@ class DuplicateInvoiceNumberValidator(RowValidator):
 @dataclass(frozen=True)
 class RowError:
     row_number: int
-    messages: List[str]
+    messages: list[str]
 
 
 @dataclass(frozen=True)
@@ -266,8 +267,8 @@ class ImportResult:
     processed: int
     imported: int
     rejected: int
-    errors: List[RowError]
-    file_errors: List[str]
+    errors: list[RowError]
+    file_errors: list[str]
 
     def summary(self) -> str:
         return (
@@ -316,12 +317,12 @@ class InvoiceImporter:
             )
 
         validator_chain = self._build_validator_chain()
-        seen_numbers: Set[str] = set()
+        seen_numbers: set[str] = set()
 
         processed = 0
         imported = 0
         rejected = 0
-        row_errors: List[RowError] = []
+        row_errors: list[RowError] = []
 
         for row in source.read_rows():
             processed += 1

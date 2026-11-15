@@ -7,21 +7,31 @@
 4. NotificationListener: generates in-app Notifications for key collection milestones
 """
 from __future__ import annotations
-from datetime import timedelta
+
 import logging
 
-from app.application.event_bus import EventBus, mutate_invoice, save_and_publish
+from app.application.event_bus import EventBus, mutate_invoice
 from app.application.playbook import ResolutionPlaybook
 from app.application.ports import (
-    AuditRepository, ClientRepository, Clock, InvoiceRepository,
+    AuditRepository,
+    ClientRepository,
+    Clock,
+    InvoiceRepository,
     NotificationRepository,
 )
 from app.application.reminders import ReminderFactory
 from app.domain.audit import AuditEvent, Notification
-from app.domain.enums import ActionSource, Priority, InvoiceStatus, ActionStatus
+from app.domain.enums import ActionSource, ActionStatus, InvoiceStatus, Priority
 from app.domain.events import (
-    BlockerRaised, BlockerResolved, DomainEvent, InvoiceBecameOverdue,
-    InvoicePaid, InvoiceWrittenOff, PaymentReceived, PromiseKept, PromiseMissed,
+    BlockerRaised,
+    BlockerResolved,
+    DomainEvent,
+    InvoiceBecameOverdue,
+    InvoicePaid,
+    InvoiceWrittenOff,
+    PaymentReceived,
+    PromiseKept,
+    PromiseMissed,
 )
 from app.domain.next_action import NextAction
 

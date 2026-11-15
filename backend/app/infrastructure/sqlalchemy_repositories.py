@@ -5,15 +5,23 @@ Implements full aggregate persistence for Invoice and children via unified
 transactions, selectinload queries, and deep collection synchronisation.
 """
 from __future__ import annotations
-from typing import Callable, List, Optional
+
+import builtins
 import uuid
+from collections.abc import Callable
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.application.ports import (
-    AuditRepository, ClientRepository, FailureLogRepository, HandlerFailure,
-    InvoiceRepository, NotificationRepository, ProjectRepository, SettingsRepository,
+    AuditRepository,
+    ClientRepository,
+    FailureLogRepository,
+    HandlerFailure,
+    InvoiceRepository,
+    NotificationRepository,
+    ProjectRepository,
+    SettingsRepository,
 )
 from app.domain.audit import AuditEvent, Notification
 from app.domain.client import Client
@@ -22,16 +30,36 @@ from app.domain.exceptions import ConcurrencyConflict, EntityNotFound
 from app.domain.invoice import Invoice
 from app.domain.project import Project
 from app.infrastructure.mappers import (
-    audit_event_to_model, blocker_to_model, client_to_model, document_to_model,
-    follow_up_to_model, model_to_audit_event, model_to_client,
-    model_to_invoice, model_to_notification, model_to_project,
-    next_action_to_model, notification_to_model, payment_to_model,
-    project_to_model, promise_to_model,
+    audit_event_to_model,
+    blocker_to_model,
+    client_to_model,
+    document_to_model,
+    follow_up_to_model,
+    model_to_audit_event,
+    model_to_client,
+    model_to_invoice,
+    model_to_notification,
+    model_to_project,
+    next_action_to_model,
+    notification_to_model,
+    payment_to_model,
+    project_to_model,
+    promise_to_model,
 )
 from app.infrastructure.orm_models import (
-    AppSettingsModel, AuditEventModel, BlockerModel, ClientModel, DocumentModel,
-    FollowUpModel, HandlerFailureModel, InvoiceModel, NextActionModel, NotificationModel,
-    PaymentModel, ProjectModel, PromiseModel,
+    AppSettingsModel,
+    AuditEventModel,
+    BlockerModel,
+    ClientModel,
+    DocumentModel,
+    FollowUpModel,
+    HandlerFailureModel,
+    InvoiceModel,
+    NextActionModel,
+    NotificationModel,
+    PaymentModel,
+    ProjectModel,
+    PromiseModel,
 )
 
 
@@ -59,7 +87,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                 raise EntityNotFound(f"Invoice {id} not found")
             return model_to_invoice(model)
 
-    def find_by_number(self, number: str) -> Optional[Invoice]:
+    def find_by_number(self, number: str) -> Invoice | None:
         with self.session_factory() as session:
             stmt = select(InvoiceModel).options(*self._eager_load()).where(InvoiceModel.invoice_number == number)
             model = session.scalar(stmt)
@@ -175,7 +203,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                 for a in invoice.actions:
                     session.merge(next_action_to_model(a, invoice.id))
 
-    def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Invoice]:
+    def list_all(self, limit: int | None = None, offset: int = 0) -> list[Invoice]:
         with self.session_factory() as session:
             stmt = select(InvoiceModel).options(*self._eager_load()).order_by(InvoiceModel.created_at.desc())
             if offset:
@@ -189,7 +217,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         with self.session_factory() as session:
             return session.scalar(select(func.count(InvoiceModel.id))) or 0
 
-    def list_active(self) -> List[Invoice]:
+    def list_active(self) -> list[Invoice]:
         active_names = [InvoiceStatus.SENT.name, InvoiceStatus.PARTIALLY_PAID.name, InvoiceStatus.DISPUTED.name]
         with self.session_factory() as session:
             stmt = (
@@ -201,7 +229,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             models = session.scalars(stmt).all()
             return [model_to_invoice(m) for m in models]
 
-    def list_active_with_pending_actions(self) -> List[Invoice]:
+    def list_active_with_pending_actions(self) -> list[Invoice]:
         active_names = [InvoiceStatus.SENT.name, InvoiceStatus.PARTIALLY_PAID.name, InvoiceStatus.DISPUTED.name]
         with self.session_factory() as session:
             stmt = (
@@ -216,7 +244,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             models = session.scalars(stmt).all()
             return [model_to_invoice(m) for m in models]
 
-    def list_by_client(self, client_id: str) -> List[Invoice]:
+    def list_by_client(self, client_id: str) -> list[Invoice]:
         with self.session_factory() as session:
             stmt = (
                 select(InvoiceModel)
@@ -227,7 +255,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             models = session.scalars(stmt).all()
             return [model_to_invoice(m) for m in models]
 
-    def list_by_project(self, project_id: str) -> List[Invoice]:
+    def list_by_project(self, project_id: str) -> list[Invoice]:
         with self.session_factory() as session:
             stmt = (
                 select(InvoiceModel)
@@ -266,7 +294,7 @@ class SqlAlchemyClientRepository(ClientRepository):
                 raise EntityNotFound(f"Client {id} not found")
             return model_to_client(model)
 
-    def find_by_email(self, email: str) -> Optional[Client]:
+    def find_by_email(self, email: str) -> Client | None:
         norm = email.strip().lower()
         with self.session_factory() as session:
             stmt = select(ClientModel).where(func.lower(ClientModel.email) == norm)
@@ -280,7 +308,7 @@ class SqlAlchemyClientRepository(ClientRepository):
             with session.begin():
                 session.merge(client_to_model(client))
 
-    def list_all(self) -> List[Client]:
+    def list_all(self) -> list[Client]:
         with self.session_factory() as session:
             stmt = select(ClientModel).order_by(ClientModel.name.asc())
             models = session.scalars(stmt).all()
@@ -305,13 +333,13 @@ class SqlAlchemyProjectRepository(ProjectRepository):
             with session.begin():
                 session.merge(project_to_model(project))
 
-    def list_all(self) -> List[Project]:
+    def list_all(self) -> list[Project]:
         with self.session_factory() as session:
             stmt = select(ProjectModel).order_by(ProjectModel.project_name.asc())
             models = session.scalars(stmt).all()
             return [model_to_project(m) for m in models]
 
-    def list_by_client(self, client_id: str) -> List[Project]:
+    def list_by_client(self, client_id: str) -> list[Project]:
         with self.session_factory() as session:
             stmt = select(ProjectModel).where(ProjectModel.client_id == client_id).order_by(ProjectModel.project_name.asc())
             models = session.scalars(stmt).all()
@@ -331,10 +359,10 @@ class SqlAlchemyAuditRepository(AuditRepository):
 
     def list(
         self,
-        invoice_id: Optional[str] = None,
+        invoice_id: str | None = None,
         limit: int = 200,
         offset: int = 0,
-    ) -> List[AuditEvent]:
+    ) -> builtins.list[AuditEvent]:
         with self.session_factory() as session:
             stmt = select(AuditEventModel).order_by(AuditEventModel.occurred_at.desc())
             if invoice_id is not None:
@@ -345,7 +373,7 @@ class SqlAlchemyAuditRepository(AuditRepository):
             models = session.scalars(stmt).all()
             return [model_to_audit_event(m) for m in models]
 
-    def count(self, invoice_id: Optional[str] = None) -> int:
+    def count(self, invoice_id: str | None = None) -> int:
         with self.session_factory() as session:
             stmt = select(func.count(AuditEventModel.id))
             if invoice_id is not None:
@@ -367,9 +395,9 @@ class SqlAlchemyNotificationRepository(NotificationRepository):
     def list(
         self,
         unread_only: bool = False,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Notification]:
+    ) -> builtins.list[Notification]:
         with self.session_factory() as session:
             stmt = select(NotificationModel).order_by(NotificationModel.created_at.desc())
             if unread_only:
@@ -402,7 +430,7 @@ class SqlAlchemySettingsRepository(SettingsRepository):
     def __init__(self, session_factory: Callable[[], Session]) -> None:
         self.session_factory = session_factory
 
-    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get(self, key: str, default: str | None = None) -> str | None:
         with self.session_factory() as session:
             model = session.get(AppSettingsModel, key)
             if model is None:
@@ -434,7 +462,7 @@ class SqlAlchemyFailureLogRepository(FailureLogRepository):
                 )
                 session.add(m)
 
-    def list(self, limit: int = 50) -> List[HandlerFailure]:
+    def list(self, limit: int = 50) -> builtins.list[HandlerFailure]:
         with self.session_factory() as session:
             stmt = select(HandlerFailureModel).order_by(HandlerFailureModel.occurred_at.desc()).limit(limit)
             models = session.scalars(stmt).all()

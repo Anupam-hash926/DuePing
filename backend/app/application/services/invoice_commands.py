@@ -1,15 +1,23 @@
 """Invoice mutation commands service."""
 from __future__ import annotations
+
 from datetime import date, datetime
-from typing import Optional
 
 from app.application.event_bus import EventBus, mutate_invoice, save_and_publish
 from app.application.invoice_factory import InvoiceFactory
 from app.application.ports import ClientRepository, Clock, InvoiceRepository, ProjectRepository
 from app.domain.document import SupportingDocument
 from app.domain.enums import (
-    ActionSource, BlockerStatus, BlockerType, Channel, DocumentType,
-    FollowUpOutcome, PaymentMethod, Priority, ReminderTone,
+    ActionSource,
+    BlockerStatus,
+    BlockerType,
+    Channel,
+    DocumentType,
+    FollowUpOutcome,
+    InvoiceStatus,
+    PaymentMethod,
+    Priority,
+    ReminderTone,
 )
 from app.domain.invoice import Invoice
 from app.domain.money import Money
@@ -35,7 +43,7 @@ class InvoiceCommands:
 
     def create_invoice(
         self, client_id: str, total: Money, issue_date: date, due_date: date,
-        invoice_number: Optional[str] = None, project_id: Optional[str] = None,
+        invoice_number: str | None = None, project_id: str | None = None,
     ) -> Invoice:
         self.client_repo.get(client_id)
         if project_id is not None:
@@ -49,8 +57,8 @@ class InvoiceCommands:
         return self.invoice_repo.get(invoice.id)
 
     def update_invoice(
-        self, id: str, due_date: Optional[date] = None,
-        total: Optional[Money] = None, project_id: Optional[str] = None,
+        self, id: str, due_date: date | None = None,
+        total: Money | None = None, project_id: str | None = None,
     ) -> Invoice:
         if project_id is not None:
             self.project_repo.get(project_id)
@@ -63,9 +71,35 @@ class InvoiceCommands:
         now = self.clock.now()
         return mutate_invoice(self.invoice_repo, self.event_bus, id, lambda inv: inv.send(now))
 
+    def list_invoices(
+        self,
+        status: InvoiceStatus | None = None,
+        client_id: str | None = None,
+        overdue_only: bool = False,
+        search: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        today: date | None = None,
+    ) -> list[Invoice]:
+        invoices = self.invoice_repo.list_all()
+        ref_today = today or self.clock.today()
+        if status is not None:
+            invoices = [inv for inv in invoices if inv.status == status]
+        if client_id is not None:
+            invoices = [inv for inv in invoices if inv.client_id == client_id]
+        if overdue_only:
+            invoices = [inv for inv in invoices if inv.is_overdue(ref_today)]
+        if search and search.strip():
+            q = search.strip().lower()
+            cls = {c.id: c.name.lower() for c in self.client_repo.list_all()}
+            invoices = [inv for inv in invoices if q in inv.invoice_number.lower() or q in cls.get(inv.client_id, "")]
+        if offset:
+            invoices = invoices[offset:]
+        return invoices[:limit] if limit is not None else invoices
+
     def record_payment(
         self, invoice_id: str, amount: Money, payment_date: date,
-        method: PaymentMethod, reference_number: Optional[str] = None,
+        method: PaymentMethod, reference_number: str | None = None,
     ) -> Invoice:
         today, now = self.clock.today(), self.clock.now()
         def do_payment(inv: Invoice) -> None:
@@ -74,7 +108,7 @@ class InvoiceCommands:
         return mutate_invoice(self.invoice_repo, self.event_bus, invoice_id, do_payment)
 
     def raise_blocker(
-        self, invoice_id: str, type: BlockerType, description: str, assigned_to: Optional[str] = None,
+        self, invoice_id: str, type: BlockerType, description: str, assigned_to: str | None = None,
     ) -> Invoice:
         now = self.clock.now()
         return mutate_invoice(
@@ -103,8 +137,8 @@ class InvoiceCommands:
 
     def log_follow_up(
         self, invoice_id: str, channel: Channel, notes: str, outcome: FollowUpOutcome,
-        contact_date: Optional[datetime] = None, promised_date: Optional[date] = None,
-        promised_amount: Optional[Money] = None,
+        contact_date: datetime | None = None, promised_date: date | None = None,
+        promised_amount: Money | None = None,
     ) -> Invoice:
         today, now = self.clock.today(), self.clock.now()
         c_date = contact_date or now
@@ -115,7 +149,7 @@ class InvoiceCommands:
         return mutate_invoice(self.invoice_repo, self.event_bus, invoice_id, do_follow_up)
 
     def record_promise(
-        self, invoice_id: str, promised_date: date, amount: Optional[Money] = None, note: str = "",
+        self, invoice_id: str, promised_date: date, amount: Money | None = None, note: str = "",
     ) -> Invoice:
         today, now = self.clock.today(), self.clock.now()
         return mutate_invoice(

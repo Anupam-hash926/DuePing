@@ -5,11 +5,13 @@ Synchronous in-process publish/subscribe with thread-safe subscription, thread-l
 dispatch queue, and visible failure tracking.
 """
 from __future__ import annotations
+
 import collections
-from datetime import datetime
 import logging
 import threading
-from typing import Any, Callable, Deque, Dict, List, Optional, Type, TypeVar
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any, TypeVar
 
 from app.application.ports import FailureLogRepository, HandlerFailure, InvoiceRepository
 from app.domain.events import DomainEvent
@@ -28,18 +30,18 @@ class EventBus:
     # PATTERN: Observer — Subject (Observable)
     """
 
-    def __init__(self, failure_log: Optional[FailureLogRepository] = None) -> None:
-        self._handlers: Dict[Type[DomainEvent], List[Callable[[Any], None]]] = {}
-        self._global_handlers: List[EventHandler] = []
+    def __init__(self, failure_log: FailureLogRepository | None = None) -> None:
+        self._handlers: dict[type[DomainEvent], list[Callable[[Any], None]]] = {}
+        self._global_handlers: list[EventHandler] = []
         self._lock = threading.RLock()
         self._local = threading.local()
-        self.failures: Deque[tuple[DomainEvent, Exception]] = collections.deque(maxlen=100)
+        self.failures: collections.deque[tuple[DomainEvent, Exception]] = collections.deque(maxlen=100)
         self._failure_log = failure_log
 
     def set_failure_log(self, failure_log: FailureLogRepository) -> None:
         self._failure_log = failure_log
 
-    def subscribe(self, event_type: Type[E], handler: Callable[[E], None]) -> None:
+    def subscribe(self, event_type: type[E], handler: Callable[[E], None]) -> None:
         """Subscribe a handler to a specific event type."""
         with self._lock:
             if event_type not in self._handlers:
@@ -86,7 +88,7 @@ class EventBus:
             except Exception as exc:
                 self._record_failure(event, handler, exc)
 
-    def publish_all(self, events: List[DomainEvent]) -> None:
+    def publish_all(self, events: list[DomainEvent]) -> None:
         """Publish a list of domain events in order using a per-thread queue to prevent infinite reentrancy."""
         if not hasattr(self._local, "queue"):
             self._local.queue = []

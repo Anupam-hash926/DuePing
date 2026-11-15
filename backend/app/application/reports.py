@@ -1,12 +1,11 @@
 """Collection reporting and aging calculations computed on demand."""
 from __future__ import annotations
+
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
 
 from app.application.ports import ClientRepository, Clock, InvoiceRepository, SettingsRepository
-from app.domain.client import Client
 from app.domain.enums import BlockerType, InvoiceStatus
 from app.domain.money import Money
 
@@ -73,13 +72,13 @@ class CollectionReport:
     active_count: int
     broken_promises: int
     kept_promises: int
-    promise_keep_rate: Optional[int]
+    promise_keep_rate: int | None
     collected_this_month: Money
-    status_counts: Dict[str, int]
-    open_blockers_by_type: Dict[str, int]
-    top_debtors: List[DebtorRow]
-    collection_trend: List[TrendPoint]
-    aging: List[AgingRow]
+    status_counts: dict[str, int]
+    open_blockers_by_type: dict[str, int]
+    top_debtors: list[DebtorRow]
+    collection_trend: list[TrendPoint]
+    aging: list[AgingRow]
 
 
 class ReportService:
@@ -146,7 +145,7 @@ class ReportService:
                 open_blockers_by_type[b.type.name] += 1
 
         # 6. Top debtors (top 5 by outstanding desc)
-        debtor_totals: Dict[str, Money] = {}
+        debtor_totals: dict[str, Money] = {}
         for inv in active_invoices:
             cid = inv.client_id
             if cid not in debtor_totals:
@@ -155,7 +154,7 @@ class ReportService:
                 debtor_totals[cid] = debtor_totals[cid].add(inv.outstanding())
 
         client_map = {c.id: c.name for c in clients}
-        debtor_rows: List[DebtorRow] = []
+        debtor_rows: list[DebtorRow] = []
         for cid, amt in debtor_totals.items():
             if amt.is_positive():
                 cname = client_map.get(cid, "Unknown")

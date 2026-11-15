@@ -1,8 +1,8 @@
 """Daily Check Service standing in for periodic scheduler tasks."""
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date
-from typing import List
 
 from app.application.event_bus import EventBus, save_and_publish
 from app.application.ports import Clock, InvoiceRepository

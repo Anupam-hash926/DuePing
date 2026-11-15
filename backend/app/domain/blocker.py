@@ -1,11 +1,12 @@
 """PaymentBlocker entity — structured reason why an invoice is unpaid."""
 from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from app.domain.enums import BlockerType, BlockerStatus
+from app.domain.enums import BlockerStatus, BlockerType
 from app.domain.exceptions import InvalidStateTransition
 
 
@@ -16,20 +17,20 @@ class PaymentBlocker:
     id: str
     type: BlockerType
     description: str
-    assigned_to: Optional[str]
+    assigned_to: str | None
     status: BlockerStatus
     created_at: datetime
-    resolved_at: Optional[datetime]
+    resolved_at: datetime | None
 
     def __init__(
         self,
         type: BlockerType,
         description: str,
         created_at: datetime,
-        assigned_to: Optional[str] = None,
+        assigned_to: str | None = None,
         status: BlockerStatus = BlockerStatus.OPEN,
-        resolved_at: Optional[datetime] = None,
-        id: Optional[str] = None,
+        resolved_at: datetime | None = None,
+        id: str | None = None,
     ) -> None:
         self.id = id or uuid.uuid4().hex
         self.type = type
@@ -40,7 +41,7 @@ class PaymentBlocker:
         self.resolved_at = resolved_at
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "PaymentBlocker":
+    def reconstitute(cls, **fields: Any) -> PaymentBlocker:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

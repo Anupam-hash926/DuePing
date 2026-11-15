@@ -14,6 +14,7 @@ Covers the Section 18 requirements:
 from __future__ import annotations
 
 import os
+
 os.environ["DUEPING_ENABLE_RESET"] = "1"
 
 import pytest
@@ -345,6 +346,7 @@ def test_reset_demo_disabled_returns_404(monkeypatch):
     """When DUEPING_ENABLE_RESET is disabled, POST /api/system/reset-demo returns 404."""
     monkeypatch.setenv("DUEPING_ENABLE_RESET", "0")
     import importlib
+
     import app.api.routers.system as sys_router
     importlib.reload(sys_router)
     from fastapi import FastAPI

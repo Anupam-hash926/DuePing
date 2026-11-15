@@ -5,10 +5,10 @@ Ranks pending collection actions according to swappable business goals
 (e.g., maximizing cash flow vs. aging vs. client default risk).
 """
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, List
 
 from app.domain.client import Client
 from app.domain.enums import Priority
@@ -130,7 +130,7 @@ class PrioritizationRegistry:
     default_key = "risk_weighted"
 
     def __init__(self) -> None:
-        self._strategies: Dict[str, PrioritizationStrategy] = {}
+        self._strategies: dict[str, PrioritizationStrategy] = {}
         self.register(RiskWeightedStrategy())
         self.register(AmountFirstStrategy())
         self.register(OldestFirstStrategy())
@@ -143,5 +143,5 @@ class PrioritizationRegistry:
             raise DomainValidationError(f"Unknown prioritization strategy: {key}")
         return self._strategies[key]
 
-    def all(self) -> List[PrioritizationStrategy]:
+    def all(self) -> list[PrioritizationStrategy]:
         return list(self._strategies.values())

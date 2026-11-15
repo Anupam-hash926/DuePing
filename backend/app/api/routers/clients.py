@@ -1,8 +1,6 @@
 """Client and Project API endpoints."""
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import get_facade
@@ -25,8 +23,8 @@ from app.application.facade import CollectionFacade
 router = APIRouter(tags=["clients"])
 
 
-@router.get("/clients", response_model=List[ClientRead])
-def list_clients(facade: CollectionFacade = Depends(get_facade)) -> List[ClientRead]:
+@router.get("/clients", response_model=list[ClientRead])
+def list_clients(facade: CollectionFacade = Depends(get_facade)) -> list[ClientRead]:
     clients = facade.list_clients()
     return [client_to_dto(c) for c in clients]
 
@@ -83,11 +81,11 @@ def update_client(
     return client_to_dto(client)
 
 
-@router.get("/projects", response_model=List[ProjectRead])
+@router.get("/projects", response_model=list[ProjectRead])
 def list_projects(
-    client_id: Optional[str] = Query(None),
+    client_id: str | None = Query(None),
     facade: CollectionFacade = Depends(get_facade),
-) -> List[ProjectRead]:
+) -> list[ProjectRead]:
     projects = facade.list_projects(client_id=client_id)
     return [project_to_dto(p) for p in projects]
 

@@ -5,10 +5,10 @@ Adding a new BlockerType requires only adding the enum member, a new ResolutionS
 implementation, and registering it on the ResolutionPlaybook without modifying existing code (OCP).
 """
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, Optional, Type
 
 from app.domain.blocker import PaymentBlocker
 from app.domain.client import Client
@@ -22,7 +22,7 @@ class PlaybookContext:
     blocker: PaymentBlocker
     invoice_number: str
     client_name: str
-    company_name: Optional[str]
+    company_name: str | None
     today: date
 
 
@@ -194,7 +194,7 @@ class ResolutionPlaybook:
     """
 
     def __init__(self) -> None:
-        self._strategies: Dict[BlockerType, ResolutionStrategy] = {}
+        self._strategies: dict[BlockerType, ResolutionStrategy] = {}
         # Register default 7 strategies
         self.register(MissingPOResolution())
         self.register(ApprovalResolution())

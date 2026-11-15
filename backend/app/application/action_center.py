@@ -1,8 +1,8 @@
 """Action Centre subsystem coordinating prioritized follow-up task lists."""
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, List, Optional
 
 from app.application.ports import ClientRepository, Clock, InvoiceRepository
 from app.application.prioritization import ActionContext, PrioritizationRegistry
@@ -29,8 +29,8 @@ class ActionCenterItem:
 class ActionCenterView:
     strategy_key: str
     today: date
-    items: List[ActionCenterItem]
-    upcoming: List[ActionCenterItem]
+    items: list[ActionCenterItem]
+    upcoming: list[ActionCenterItem]
 
 
 class ActionCenter:
@@ -48,12 +48,12 @@ class ActionCenter:
         self.registry = registry
         self.clock = clock
 
-    def build(self, strategy_key: Optional[str] = None) -> ActionCenterView:
+    def build(self, strategy_key: str | None = None) -> ActionCenterView:
         strat_key = strategy_key or self.registry.default_key
         strategy = self.registry.get(strat_key)
         today = self.clock.today()
 
-        client_cache: Dict[str, Client] = {}
+        client_cache: dict[str, Client] = {}
 
         def get_client(cid: str) -> Client:
             if cid not in client_cache:
@@ -61,8 +61,8 @@ class ActionCenter:
             return client_cache[cid]
 
         active_invoices = self.invoice_repo.list_active_with_pending_actions()
-        items: List[ActionCenterItem] = []
-        upcoming: List[ActionCenterItem] = []
+        items: list[ActionCenterItem] = []
+        upcoming: list[ActionCenterItem] = []
 
         upcoming_cutoff = today + timedelta(days=7)
 

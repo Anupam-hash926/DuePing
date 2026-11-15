@@ -1,24 +1,43 @@
 """Tests for domain events emitted by Invoice operations."""
 from __future__ import annotations
-from datetime import date, datetime, timedelta
-import pytest
 
+from datetime import timedelta
+
+from app.domain.document import SupportingDocument
 from app.domain.enums import (
-    InvoiceStatus, BlockerType, Channel, FollowUpOutcome,
-    DocumentType, ReminderTone, Priority, ActionSource,
+    ActionSource,
+    BlockerType,
+    Channel,
+    DocumentType,
+    FollowUpOutcome,
+    Priority,
+    ReminderTone,
 )
 from app.domain.events import (
-    InvoiceSent, PaymentReceived, InvoicePaid, InvoiceDisputed,
-    DisputeResolved, InvoiceWrittenOff, BlockerRaised, BlockerResolved,
-    PromiseRecorded, PromiseKept, PromiseMissed, InvoiceBecameOverdue,
-    FollowUpLogged, ReminderSent, DocumentAttached, DocumentRemoved,
-    ActionCreated, ActionCompleted, ActionRescheduled, ActionsCancelled,
+    ActionCompleted,
+    ActionCreated,
+    ActionRescheduled,
+    ActionsCancelled,
+    BlockerRaised,
+    BlockerResolved,
+    DisputeResolved,
+    DocumentAttached,
+    DocumentRemoved,
+    FollowUpLogged,
+    InvoiceBecameOverdue,
+    InvoiceDisputed,
+    InvoicePaid,
+    InvoiceSent,
+    InvoiceWrittenOff,
+    PaymentReceived,
+    PromiseKept,
+    PromiseMissed,
+    PromiseRecorded,
+    ReminderSent,
 )
 from app.domain.money import Money
-from app.domain.payment import Payment
-from app.domain.document import SupportingDocument
 from app.domain.next_action import NextAction
-from tests.domain.conftest import TODAY, NOW, make_invoice, make_payment
+from tests.domain.conftest import NOW, TODAY, make_invoice, make_payment
 
 
 def sent_invoice(total: int = 100_000) -> make_invoice:
@@ -90,7 +109,7 @@ def test_raise_blocker_emits_blocker_raised():
 
 def test_raise_disputed_amount_emits_blocker_raised_and_invoice_disputed():
     inv = sent_invoice()
-    b = inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "Rate error", "Client", NOW)
+    inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "Rate error", "Client", NOW)
     events = inv.pull_events()
     assert len(events) == 2
     assert isinstance(events[0], BlockerRaised)

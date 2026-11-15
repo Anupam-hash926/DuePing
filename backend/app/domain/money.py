@@ -1,8 +1,8 @@
 """Money value object — immutable, decimal-exact representation of a monetary amount."""
 from __future__ import annotations
+
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-from typing import Union
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class Money:
     # ── Constructors ──────────────────────────────────────────────────────────
 
     @classmethod
-    def of(cls, value: Union[str, int, Decimal], currency: str = "INR") -> "Money":
+    def of(cls, value: str | int | Decimal, currency: str = "INR") -> Money:
         """Primary constructor. Accepts str, int or Decimal (never float)."""
         if isinstance(value, float):
             raise TypeError("Money does not accept float; use str, int or Decimal")
@@ -34,18 +34,18 @@ class Money:
             raise ValueError(f"Cannot create Money from {value!r}") from exc
 
     @classmethod
-    def zero(cls, currency: str = "INR") -> "Money":
+    def zero(cls, currency: str = "INR") -> Money:
         """Zero amount in the given currency."""
         return cls(amount=Decimal("0.00"), currency=currency)
 
     @classmethod
-    def from_minor_units(cls, n: int, currency: str = "INR") -> "Money":
+    def from_minor_units(cls, n: int, currency: str = "INR") -> Money:
         """Construct from integer minor units (paise / cents)."""
         return cls(amount=Decimal(n) / Decimal("100"), currency=currency)
 
     # ── Internal helper ───────────────────────────────────────────────────────
 
-    def _check_currency(self, other: "Money") -> None:
+    def _check_currency(self, other: Money) -> None:
         from app.domain.exceptions import DomainValidationError  # local import to avoid cycles
         if self.currency != other.currency:
             raise DomainValidationError(
@@ -54,37 +54,37 @@ class Money:
 
     # ── Arithmetic ────────────────────────────────────────────────────────────
 
-    def add(self, other: "Money") -> "Money":
+    def add(self, other: Money) -> Money:
         """Return self + other; currencies must match."""
         self._check_currency(other)
         return Money(amount=self.amount + other.amount, currency=self.currency)
 
-    def subtract(self, other: "Money") -> "Money":
+    def subtract(self, other: Money) -> Money:
         """Return self - other; currencies must match."""
         self._check_currency(other)
         return Money(amount=self.amount - other.amount, currency=self.currency)
 
-    def __add__(self, other: "Money") -> "Money":
+    def __add__(self, other: Money) -> Money:
         return self.add(other)
 
-    def __sub__(self, other: "Money") -> "Money":
+    def __sub__(self, other: Money) -> Money:
         return self.subtract(other)
 
     # ── Comparisons ───────────────────────────────────────────────────────────
 
-    def __lt__(self, other: "Money") -> bool:  # type: ignore[override]
+    def __lt__(self, other: Money) -> bool:  # type: ignore[override]
         self._check_currency(other)
         return self.amount < other.amount
 
-    def __le__(self, other: "Money") -> bool:  # type: ignore[override]
+    def __le__(self, other: Money) -> bool:  # type: ignore[override]
         self._check_currency(other)
         return self.amount <= other.amount
 
-    def __gt__(self, other: "Money") -> bool:  # type: ignore[override]
+    def __gt__(self, other: Money) -> bool:  # type: ignore[override]
         self._check_currency(other)
         return self.amount > other.amount
 
-    def __ge__(self, other: "Money") -> bool:  # type: ignore[override]
+    def __ge__(self, other: Money) -> bool:  # type: ignore[override]
         self._check_currency(other)
         return self.amount >= other.amount
 

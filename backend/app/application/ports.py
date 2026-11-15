@@ -5,10 +5,11 @@ Application services depend strictly on these abstract interfaces, never on
 concrete persistence implementations (Dependency Inversion Principle).
 """
 from __future__ import annotations
+
+import builtins
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List, Optional
 
 from app.domain.audit import AuditEvent, Notification
 from app.domain.client import Client
@@ -39,7 +40,7 @@ class InvoiceRepository(ABC):
         ...
 
     @abstractmethod
-    def find_by_number(self, number: str) -> Optional[Invoice]:
+    def find_by_number(self, number: str) -> Invoice | None:
         """Find invoice by its unique invoice_number or return None."""
         ...
 
@@ -49,7 +50,7 @@ class InvoiceRepository(ABC):
         ...
 
     @abstractmethod
-    def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Invoice]:
+    def list_all(self, limit: int | None = None, offset: int = 0) -> list[Invoice]:
         """List all invoices with optional pagination."""
         ...
 
@@ -59,22 +60,22 @@ class InvoiceRepository(ABC):
         ...
 
     @abstractmethod
-    def list_active(self) -> List[Invoice]:
+    def list_active(self) -> list[Invoice]:
         """List active invoices (SENT, PARTIALLY_PAID, DISPUTED)."""
         ...
 
     @abstractmethod
-    def list_active_with_pending_actions(self) -> List[Invoice]:
+    def list_active_with_pending_actions(self) -> list[Invoice]:
         """List active invoices that have at least one PENDING action."""
         ...
 
     @abstractmethod
-    def list_by_client(self, client_id: str) -> List[Invoice]:
+    def list_by_client(self, client_id: str) -> list[Invoice]:
         """List all invoices for a given client."""
         ...
 
     @abstractmethod
-    def list_by_project(self, project_id: str) -> List[Invoice]:
+    def list_by_project(self, project_id: str) -> list[Invoice]:
         """List all invoices for a given project."""
         ...
 
@@ -93,7 +94,7 @@ class ClientRepository(ABC):
         ...
 
     @abstractmethod
-    def find_by_email(self, email: str) -> Optional[Client]:
+    def find_by_email(self, email: str) -> Client | None:
         """Find client by email address or return None."""
         ...
 
@@ -103,7 +104,7 @@ class ClientRepository(ABC):
         ...
 
     @abstractmethod
-    def list_all(self) -> List[Client]:
+    def list_all(self) -> list[Client]:
         """List all clients."""
         ...
 
@@ -122,12 +123,12 @@ class ProjectRepository(ABC):
         ...
 
     @abstractmethod
-    def list_all(self) -> List[Project]:
+    def list_all(self) -> list[Project]:
         """List all projects."""
         ...
 
     @abstractmethod
-    def list_by_client(self, client_id: str) -> List[Project]:
+    def list_by_client(self, client_id: str) -> list[Project]:
         """List all projects for a specific client."""
         ...
 
@@ -143,15 +144,15 @@ class AuditRepository(ABC):
     @abstractmethod
     def list(
         self,
-        invoice_id: Optional[str] = None,
+        invoice_id: str | None = None,
         limit: int = 200,
         offset: int = 0,
-    ) -> List[AuditEvent]:
+    ) -> builtins.list[AuditEvent]:
         """List audit events ordered newest first with pagination."""
         ...
 
     @abstractmethod
-    def count(self, invoice_id: Optional[str] = None) -> int:
+    def count(self, invoice_id: str | None = None) -> int:
         """Count total audit events, optionally filtered by invoice."""
         ...
 
@@ -168,9 +169,9 @@ class NotificationRepository(ABC):
     def list(
         self,
         unread_only: bool = False,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Notification]:
+    ) -> builtins.list[Notification]:
         """List notifications, optionally filtering for unread only with pagination."""
         ...
 
@@ -189,7 +190,7 @@ class SettingsRepository(ABC):
     """Port for application settings key-value persistence."""
 
     @abstractmethod
-    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get(self, key: str, default: str | None = None) -> str | None:
         """Get setting value or default."""
         ...
 
@@ -207,7 +208,7 @@ class HandlerFailure:
     event_type: str
     handler: str
     error: str
-    id: Optional[str] = None
+    id: str | None = None
 
 
 class FailureLogRepository(ABC):
@@ -219,6 +220,6 @@ class FailureLogRepository(ABC):
         ...
 
     @abstractmethod
-    def list(self, limit: int = 50) -> List[HandlerFailure]:
+    def list(self, limit: int = 50) -> builtins.list[HandlerFailure]:
         """List recent failures, newest first."""
         ...

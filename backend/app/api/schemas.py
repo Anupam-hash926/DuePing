@@ -8,12 +8,10 @@ Follows JSON conventions in Section 15.3:
 """
 from __future__ import annotations
 
-from datetime import date, datetime
 import datetime as _dt
-from typing import Dict, List, Optional
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Common / Money
@@ -37,23 +35,23 @@ class SuccessResponse(BaseModel):
 class ClientCreate(BaseModel):
     name: str
     email: str
-    phone: Optional[str] = None
-    company_name: Optional[str] = None
+    phone: str | None = None
+    company_name: str | None = None
 
 
 class ClientUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    company_name: Optional[str] = None
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    company_name: str | None = None
 
 
 class ClientRead(BaseModel):
     id: str
     name: str
     email: str
-    phone: Optional[str] = None
-    company_name: Optional[str] = None
+    phone: str | None = None
+    company_name: str | None = None
     reliability_score: float
     risk_level: str
     promises_kept_count: int
@@ -64,7 +62,7 @@ class ClientRead(BaseModel):
 class ClientSnippetRead(BaseModel):
     id: str
     name: str
-    company_name: Optional[str] = None
+    company_name: str | None = None
     reliability_score: float
     risk_level: str
 
@@ -72,7 +70,7 @@ class ClientSnippetRead(BaseModel):
 class ProjectCreate(BaseModel):
     client_id: str
     project_name: str
-    description: Optional[str] = None
+    description: str | None = None
     start_date: date
 
 
@@ -80,7 +78,7 @@ class ProjectRead(BaseModel):
     id: str
     client_id: str
     project_name: str
-    description: Optional[str] = None
+    description: str | None = None
     start_date: date
     status: str
 
@@ -99,7 +97,7 @@ class PaymentCreate(BaseModel):
     amount: str
     payment_date: date
     method: str
-    reference_number: Optional[str] = None
+    reference_number: str | None = None
 
 
 class PaymentRead(BaseModel):
@@ -107,38 +105,38 @@ class PaymentRead(BaseModel):
     amount: MoneyDTO
     payment_date: date
     method: str
-    reference_number: Optional[str] = None
+    reference_number: str | None = None
     recorded_at: datetime
 
 
 class BlockerCreate(BaseModel):
     type: str
-    description: Optional[str] = None
-    assigned_to: Optional[str] = None
+    description: str | None = None
+    assigned_to: str | None = None
 
 
 class BlockerPatch(BaseModel):
-    assigned_to: Optional[str] = None
-    status: Optional[str] = None
+    assigned_to: str | None = None
+    status: str | None = None
 
 
 class BlockerRead(BaseModel):
     id: str
     type: str
-    description: Optional[str] = None
-    assigned_to: Optional[str] = None
+    description: str | None = None
+    assigned_to: str | None = None
     status: str
     created_at: datetime
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
 
 class FollowUpCreate(BaseModel):
     channel: str
     notes: str
     outcome: str
-    contact_date: Optional[date] = None
-    promised_date: Optional[date] = None
-    promised_amount: Optional[str] = None
+    contact_date: date | None = None
+    promised_date: date | None = None
+    promised_amount: str | None = None
 
 
 class FollowUpRead(BaseModel):
@@ -147,21 +145,21 @@ class FollowUpRead(BaseModel):
     channel: str
     notes: str
     outcome: str
-    promised_date: Optional[date] = None
-    promised_amount: Optional[MoneyDTO] = None
+    promised_date: date | None = None
+    promised_amount: MoneyDTO | None = None
 
 
 class PromiseCreate(BaseModel):
     promised_date: date
-    amount: Optional[str] = None
-    note: Optional[str] = None
+    amount: str | None = None
+    note: str | None = None
 
 
 class PromiseRead(BaseModel):
     id: str
     promised_date: date
-    amount: Optional[MoneyDTO] = None
-    note: Optional[str] = None
+    amount: MoneyDTO | None = None
+    note: str | None = None
     status: str
     created_at: datetime
 
@@ -193,13 +191,13 @@ class NextActionReschedule(BaseModel):
 
 class NextActionRead(BaseModel):
     id: str
-    invoice_id: Optional[str] = None
+    invoice_id: str | None = None
     description: str
     priority: str
     due_date: date
     status: str
     source: str
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -212,14 +210,14 @@ class InvoiceCreate(BaseModel):
     total_amount: str
     issue_date: date
     due_date: date
-    invoice_number: Optional[str] = None
-    project_id: Optional[str] = None
+    invoice_number: str | None = None
+    project_id: str | None = None
 
 
 class InvoiceUpdate(BaseModel):
-    due_date: Optional[date] = None
-    total_amount: Optional[str] = None
-    project_id: Optional[str] = None
+    due_date: date | None = None
+    total_amount: str | None = None
+    project_id: str | None = None
 
 
 class InvoiceWriteOff(BaseModel):
@@ -230,7 +228,7 @@ class InvoiceSummaryRead(BaseModel):
     id: str
     invoice_number: str
     client: ClientSnippetRead
-    project: Optional[ProjectSnippetRead] = None
+    project: ProjectSnippetRead | None = None
     issue_date: date
     due_date: date
     total: MoneyDTO
@@ -240,7 +238,7 @@ class InvoiceSummaryRead(BaseModel):
     is_overdue: bool
     days_overdue: int
     reminder_level: int
-    allowed_operations: List[str]
+    allowed_operations: list[str]
     open_blocker_count: int
     pending_action_count: int
 
@@ -249,7 +247,7 @@ class InvoiceRead(BaseModel):
     id: str
     invoice_number: str
     client: ClientSnippetRead
-    project: Optional[ProjectSnippetRead] = None
+    project: ProjectSnippetRead | None = None
     issue_date: date
     due_date: date
     total: MoneyDTO
@@ -259,30 +257,30 @@ class InvoiceRead(BaseModel):
     is_overdue: bool
     days_overdue: int
     reminder_level: int
-    allowed_operations: List[str]
+    allowed_operations: list[str]
     open_blocker_count: int = 0
     pending_action_count: int = 0
-    payments: List[PaymentRead] = Field(default_factory=list)
-    blockers: List[BlockerRead] = Field(default_factory=list)
-    promises: List[PromiseRead] = Field(default_factory=list)
-    follow_ups: List[FollowUpRead] = Field(default_factory=list)
-    documents: List[DocumentRead] = Field(default_factory=list)
-    actions: List[NextActionRead] = Field(default_factory=list)
+    payments: list[PaymentRead] = Field(default_factory=list)
+    blockers: list[BlockerRead] = Field(default_factory=list)
+    promises: list[PromiseRead] = Field(default_factory=list)
+    follow_ups: list[FollowUpRead] = Field(default_factory=list)
+    documents: list[DocumentRead] = Field(default_factory=list)
+    actions: list[NextActionRead] = Field(default_factory=list)
 
 
 class ClientSummaryRead(BaseModel):
     id: str
     name: str
     email: str
-    phone: Optional[str] = None
-    company_name: Optional[str] = None
+    phone: str | None = None
+    company_name: str | None = None
     reliability_score: float
     risk_level: str
     promises_kept_count: int
     promises_broken_count: int
     created_at: datetime
     total_outstanding: MoneyDTO
-    invoices: List[InvoiceSummaryRead] = Field(default_factory=list)
+    invoices: list[InvoiceSummaryRead] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +324,9 @@ class StrategyInfoRead(BaseModel):
 class ActionCenterRead(BaseModel):
     strategy: str
     today: date
-    strategies: List[StrategyInfoRead]
-    items: List[ActionCenterItemRead]
-    upcoming: List[ActionCenterItemRead]
+    strategies: list[StrategyInfoRead]
+    items: list[ActionCenterItemRead]
+    upcoming: list[ActionCenterItemRead]
 
 
 # ---------------------------------------------------------------------------
@@ -343,15 +341,15 @@ class ImportRequest(BaseModel):
 
 class RowErrorRead(BaseModel):
     row_number: int
-    messages: List[str]
+    messages: list[str]
 
 
 class ImportResultRead(BaseModel):
     processed: int
     imported: int
     rejected: int
-    errors: List[RowErrorRead]
-    file_errors: List[str]
+    errors: list[RowErrorRead]
+    file_errors: list[str]
     summary: str
 
 
@@ -386,13 +384,13 @@ class CollectionReportRead(BaseModel):
     active_count: int
     broken_promises: int
     kept_promises: int
-    promise_keep_rate: Optional[int] = None
+    promise_keep_rate: int | None = None
     collected_this_month: MoneyDTO
-    status_counts: Dict[str, int]
-    open_blockers_by_type: Dict[str, int]
-    top_debtors: List[DebtorRowRead]
-    collection_trend: List[TrendPointRead]
-    aging: List[AgingRowRead]
+    status_counts: dict[str, int]
+    open_blockers_by_type: dict[str, int]
+    top_debtors: list[DebtorRowRead]
+    collection_trend: list[TrendPointRead]
+    aging: list[AgingRowRead]
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +411,7 @@ class SimulatedDateRead(BaseModel):
 
 
 class SimulatedDateUpdate(BaseModel):
-    date: Optional[_dt.date] = None
+    date: _dt.date | None = None
 
 
 class SettingsRead(BaseModel):
@@ -422,15 +420,15 @@ class SettingsRead(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    sender_name: Optional[str] = None
-    default_currency: Optional[str] = None
+    sender_name: str | None = None
+    default_currency: str | None = None
 
 
 class AuditEventRead(BaseModel):
     id: str
     occurred_at: datetime
     event_type: str
-    invoice_id: Optional[str] = None
+    invoice_id: str | None = None
     description: str
 
 
@@ -442,7 +440,7 @@ class NotificationRead(BaseModel):
 
 
 class HandlerFailureRead(BaseModel):
-    id: Optional[str] = None
+    id: str | None = None
     occurred_at: datetime
     event_type: str
     handler: str

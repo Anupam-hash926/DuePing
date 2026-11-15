@@ -1,44 +1,59 @@
 """Tests for Clock, Playbook, Prioritization, Reminders, Factory, and Importer."""
 from __future__ import annotations
+
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+
 import pytest
 
 from app.application.clock import SimulatedClock, SystemClock
 from app.application.importing import (
-    AmountValidator, ClientDataValidator, CsvInvoiceSource, DateValidator,
-    DuplicateInvoiceNumberValidator, InvoiceImporter, InvoiceSourceFactory,
-    RawInvoiceRow, RequiredFieldsValidator, StatusValidator, ValidationContext,
+    AmountValidator,
+    ClientDataValidator,
+    CsvInvoiceSource,
+    DateValidator,
+    DuplicateInvoiceNumberValidator,
+    InvoiceImporter,
+    InvoiceSourceFactory,
+    RawInvoiceRow,
+    RequiredFieldsValidator,
+    StatusValidator,
+    ValidationContext,
 )
 from app.application.invoice_factory import InvoiceFactory
 from app.application.playbook import (
-    ApprovalResolution, DisputeResolution, MissingDocumentsResolution,
-    MissingPOResolution, NoResponseResolution, OtherResolution,
-    ResolutionPlaybook, ResolutionStrategy, WrongDetailsResolution,
+    ResolutionPlaybook,
+    ResolutionStrategy,
 )
 from app.application.prioritization import (
-    ActionContext, AmountFirstStrategy, OldestFirstStrategy,
-    PrioritizationRegistry, RiskWeightedStrategy,
+    ActionContext,
+    AmountFirstStrategy,
+    OldestFirstStrategy,
+    PrioritizationRegistry,
+    RiskWeightedStrategy,
 )
 from app.application.reminders import (
-    FinalNoticeReminder, FirmReminder, GeneratedReminder, PoliteReminder,
     ReminderFactory,
 )
 from app.domain.blocker import PaymentBlocker
 from app.domain.client import Client
 from app.domain.enums import (
-    ActionSource, ActionStatus, BlockerStatus, BlockerType, Priority, ReminderTone,
+    ActionSource,
+    BlockerType,
+    Priority,
+    ReminderTone,
 )
 from app.domain.exceptions import DomainValidationError, DuplicateInvoiceNumber
 from app.domain.invoice import Invoice
 from app.domain.money import Money
 from app.domain.next_action import NextAction
 from app.infrastructure.in_memory_repositories import (
-    InMemoryClientRepository, InMemoryInvoiceRepository,
-    InMemoryProjectRepository, InMemorySettingsRepository,
+    InMemoryClientRepository,
+    InMemoryInvoiceRepository,
+    InMemoryProjectRepository,
+    InMemorySettingsRepository,
 )
-from tests.domain.conftest import NOW, TODAY, make_invoice, make_payment
-
+from tests.domain.conftest import NOW, TODAY, make_invoice
 
 # ── Clock Tests ───────────────────────────────────────────────────────────────
 
@@ -299,7 +314,6 @@ Negative Co,neg@co.com,2026-01-01,2026-01-15,-200,sent,
         assert len(inv_repo.list_all()) == 2
 
     def test_auto_number_after_custom_number_import(self):
-        from decimal import Decimal
         inv_repo = InMemoryInvoiceRepository()
         factory = InvoiceFactory(inv_repo)
         # Import an invoice with custom number DP-2026-0002
@@ -325,7 +339,6 @@ Negative Co,neg@co.com,2026-01-01,2026-01-15,-200,sent,
         assert inv1.invoice_number == "DP-2026-0003"
 
     def test_auto_number_is_monotonic(self):
-        from decimal import Decimal
         inv_repo = InMemoryInvoiceRepository()
         factory = InvoiceFactory(inv_repo)
         inv1 = factory.create("c1", Money(Decimal("100.00"), "USD"), date(2026, 1, 1), date(2026, 1, 15), NOW)
@@ -341,7 +354,6 @@ Negative Co,neg@co.com,2026-01-01,2026-01-15,-200,sent,
         ]
 
     def test_sequence_ignores_non_matching_numbers(self):
-        from decimal import Decimal
         inv_repo = InMemoryInvoiceRepository()
         factory = InvoiceFactory(inv_repo)
         inv_custom = Invoice(

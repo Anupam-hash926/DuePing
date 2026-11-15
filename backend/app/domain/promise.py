@@ -1,8 +1,9 @@
 """PaymentPromise — a client's commitment to pay by a date."""
 from __future__ import annotations
+
 import uuid
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.domain.enums import PromiseStatus
 from app.domain.exceptions import InvalidStateTransition
@@ -17,19 +18,19 @@ class PaymentPromise:
         promised_date: date,
         created_at: datetime,
         note: str = "",
-        amount: Optional[Money] = None,
+        amount: Money | None = None,
         status: PromiseStatus = PromiseStatus.PENDING,
-        id: Optional[str] = None,
+        id: str | None = None,
     ) -> None:
         self.id: str = id or uuid.uuid4().hex
         self.promised_date: date = promised_date
-        self.amount: Optional[Money] = amount
+        self.amount: Money | None = amount
         self.note: str = note
         self.status: PromiseStatus = status
         self.created_at: datetime = created_at
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "PaymentPromise":
+    def reconstitute(cls, **fields: Any) -> PaymentPromise:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

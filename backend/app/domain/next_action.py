@@ -1,10 +1,11 @@
 """NextAction — a concrete follow-up task on an invoice."""
 from __future__ import annotations
+
 import uuid
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
-from app.domain.enums import Priority, ActionStatus, ActionSource
+from app.domain.enums import ActionSource, ActionStatus, Priority
 from app.domain.exceptions import DomainValidationError, InvalidStateTransition
 
 
@@ -18,10 +19,10 @@ class NextAction:
         due_date: date,
         source: ActionSource,
         created_at: datetime,
-        source_ref: Optional[str] = None,
+        source_ref: str | None = None,
         status: ActionStatus = ActionStatus.PENDING,
-        completed_at: Optional[datetime] = None,
-        id: Optional[str] = None,
+        completed_at: datetime | None = None,
+        id: str | None = None,
     ) -> None:
         self.id: str = id or uuid.uuid4().hex
         self.description: str = description
@@ -29,12 +30,12 @@ class NextAction:
         self.due_date: date = due_date
         self.status: ActionStatus = status
         self.source: ActionSource = source
-        self.source_ref: Optional[str] = source_ref
+        self.source_ref: str | None = source_ref
         self.created_at: datetime = created_at
-        self.completed_at: Optional[datetime] = completed_at
+        self.completed_at: datetime | None = completed_at
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "NextAction":
+    def reconstitute(cls, **fields: Any) -> NextAction:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

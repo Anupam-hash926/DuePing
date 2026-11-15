@@ -1,8 +1,9 @@
 """SupportingDocument — metadata only, no file storage."""
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from app.domain.enums import DocumentType
 
@@ -18,8 +19,8 @@ class SupportingDocument:
         file_name: str,
         file_path: str,
         uploaded_at: datetime,
-        file_type: Optional[str] = None,
-        id: Optional[str] = None,
+        file_type: str | None = None,
+        id: str | None = None,
     ) -> None:
         self.id: str = id or uuid.uuid4().hex
         self.document_type: DocumentType = document_type
@@ -33,7 +34,7 @@ class SupportingDocument:
             self.file_type = ext
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "SupportingDocument":
+    def reconstitute(cls, **fields: Any) -> SupportingDocument:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

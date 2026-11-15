@@ -1,10 +1,10 @@
 """Tests for Money value object."""
-import pytest
 from decimal import Decimal
 
-from app.domain.money import Money
-from app.domain.exceptions import DomainValidationError
+import pytest
 
+from app.domain.exceptions import DomainValidationError
+from app.domain.money import Money
 
 # ── Construction ──────────────────────────────────────────────────────────────
 

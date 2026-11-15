@@ -1,12 +1,17 @@
 """System, clock, settings, audit, notifications, and failure monitoring service."""
 from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import date
-from typing import Callable, Dict, List, Optional
 
 from app.application.daily_check import DailyCheckService, DailyCheckSummary
 from app.application.ports import (
-    AuditRepository, Clock, FailureLogRepository, HandlerFailure,
-    NotificationRepository, SettingsRepository,
+    AuditRepository,
+    Clock,
+    FailureLogRepository,
+    HandlerFailure,
+    NotificationRepository,
+    SettingsRepository,
 )
 from app.domain.audit import AuditEvent, Notification
 
@@ -21,8 +26,8 @@ class SystemService:
         audit_repo: AuditRepository,
         notification_repo: NotificationRepository,
         daily_check_service: DailyCheckService,
-        failure_log_repo: Optional[FailureLogRepository] = None,
-        reset_callable: Optional[Callable[[], None]] = None,
+        failure_log_repo: FailureLogRepository | None = None,
+        reset_callable: Callable[[], None] | None = None,
     ) -> None:
         self.clock = clock
         self.settings_repo = settings_repo
@@ -35,7 +40,7 @@ class SystemService:
     def run_daily_check(self) -> DailyCheckSummary:
         return self.daily_check_service.run()
 
-    def get_today(self) -> Dict[str, object]:
+    def get_today(self) -> dict[str, object]:
         today = self.clock.today()
         sim_val = self.settings_repo.get("simulated_date")
         is_simulated = bool(sim_val and sim_val.strip())
@@ -44,13 +49,13 @@ class SystemService:
             "simulated": is_simulated,
         }
 
-    def set_simulated_date(self, new_date: Optional[date]) -> None:
+    def set_simulated_date(self, new_date: date | None) -> None:
         if new_date is None:
             self.settings_repo.set("simulated_date", "")
         else:
             self.settings_repo.set("simulated_date", new_date.isoformat())
 
-    def get_settings(self) -> Dict[str, str]:
+    def get_settings(self) -> dict[str, str]:
         sender = self.settings_repo.get("sender_name", "DuePing User") or "DuePing User"
         curr = self.settings_repo.get("default_currency", "INR") or "INR"
         sim = self.settings_repo.get("simulated_date", "") or ""
@@ -62,9 +67,9 @@ class SystemService:
 
     def update_settings(
         self,
-        sender_name: Optional[str] = None,
-        default_currency: Optional[str] = None,
-    ) -> Dict[str, str]:
+        sender_name: str | None = None,
+        default_currency: str | None = None,
+    ) -> dict[str, str]:
         if sender_name is not None:
             self.settings_repo.set("sender_name", sender_name.strip())
         if default_currency is not None:
@@ -73,21 +78,21 @@ class SystemService:
 
     def list_audit(
         self,
-        invoice_id: Optional[str] = None,
+        invoice_id: str | None = None,
         limit: int = 200,
         offset: int = 0,
-    ) -> List[AuditEvent]:
+    ) -> list[AuditEvent]:
         return self.audit_repo.list(invoice_id=invoice_id, limit=limit, offset=offset)
 
-    def count_audit(self, invoice_id: Optional[str] = None) -> int:
+    def count_audit(self, invoice_id: str | None = None) -> int:
         return self.audit_repo.count(invoice_id=invoice_id)
 
     def list_notifications(
         self,
         unread_only: bool = False,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-    ) -> List[Notification]:
+    ) -> list[Notification]:
         return self.notification_repo.list(unread_only=unread_only, limit=limit, offset=offset)
 
     def count_notifications(self, unread_only: bool = False) -> int:
@@ -96,7 +101,7 @@ class SystemService:
     def mark_notifications_read(self) -> None:
         self.notification_repo.mark_all_read()
 
-    def list_failures(self, limit: int = 50) -> List[HandlerFailure]:
+    def list_failures(self, limit: int = 50) -> list[HandlerFailure]:
         if self.failure_log_repo is not None:
             return self.failure_log_repo.list(limit=limit)
         return []

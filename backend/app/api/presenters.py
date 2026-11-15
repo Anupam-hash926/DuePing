@@ -5,7 +5,6 @@ Pure presentation layer keeping mapping logic out of FastAPI route handlers.
 from __future__ import annotations
 
 from datetime import date
-from typing import Dict, List, Optional
 
 from app.api.schemas import (
     ActionCenterItemRead,
@@ -155,7 +154,7 @@ def document_to_dto(d: SupportingDocument) -> DocumentRead:
     )
 
 
-def next_action_to_dto(a: NextAction, invoice_id: Optional[str] = None) -> NextActionRead:
+def next_action_to_dto(a: NextAction, invoice_id: str | None = None) -> NextActionRead:
     return NextActionRead(
         id=a.id,
         invoice_id=invoice_id,
@@ -171,7 +170,7 @@ def next_action_to_dto(a: NextAction, invoice_id: Optional[str] = None) -> NextA
 def invoice_to_summary_dto(
     invoice: Invoice,
     client: Client,
-    project: Optional[Project],
+    project: Project | None,
     today: date,
 ) -> InvoiceSummaryRead:
     return InvoiceSummaryRead(
@@ -197,7 +196,7 @@ def invoice_to_summary_dto(
 def invoice_to_dto(
     invoice: Invoice,
     client: Client,
-    project: Optional[Project],
+    project: Project | None,
     today: date,
 ) -> InvoiceRead:
     return InvoiceRead(
@@ -229,7 +228,7 @@ def invoice_to_dto(
 def client_summary_to_dto(
     client: Client,
     outstanding: Money,
-    invoices: List[InvoiceSummaryRead],
+    invoices: list[InvoiceSummaryRead],
 ) -> ClientSummaryRead:
     return ClientSummaryRead(
         id=client.id,
@@ -263,7 +262,7 @@ def action_center_item_to_dto(item: ActionCenterItem) -> ActionCenterItemRead:
 
 def action_center_to_dto(
     view: ActionCenterView,
-    strategies: List[Dict[str, str]],
+    strategies: list[dict[str, str]],
 ) -> ActionCenterRead:
     return ActionCenterRead(
         strategy=view.strategy_key,

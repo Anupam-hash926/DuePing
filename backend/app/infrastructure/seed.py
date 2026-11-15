@@ -10,7 +10,6 @@ Follows Section 17.1 of the specification:
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from typing import Optional
 
 from app.application.facade import CollectionFacade
 from app.domain.enums import (
@@ -25,7 +24,7 @@ from app.domain.money import Money
 from app.infrastructure.db import create_all, drop_all
 
 
-def seed_demo_data(facade: Optional[CollectionFacade] = None) -> dict:
+def seed_demo_data(facade: CollectionFacade | None = None) -> dict:
     """Drop tables, recreate them, and seed historical demo data."""
     # 1. Reset database tables
     drop_all()
@@ -350,7 +349,7 @@ def seed_demo_data(facade: Optional[CollectionFacade] = None) -> dict:
     # Step: T - 5
     facade.set_simulated_date(d(-5))
     # #10 Sunrise, 40,000, issue T-5, due T+25 (DRAFT - not sent)
-    inv10 = facade.create_invoice(
+    facade.create_invoice(
         client_id=c_sunrise.id,
         total=Money.of("40000.00", "INR"),
         issue_date=d(-5),
@@ -386,7 +385,7 @@ def seed_demo_data(facade: Optional[CollectionFacade] = None) -> dict:
     return {"seeded": True, "clients": 5, "invoices": 13}
 
 
-def reset_demo_data(facade: Optional[CollectionFacade] = None) -> None:
+def reset_demo_data(facade: CollectionFacade | None = None) -> None:
     seed_demo_data(facade)
 
 

@@ -2,22 +2,21 @@
 from __future__ import annotations
 
 import concurrent.futures
+import os
 from dataclasses import dataclass
 from datetime import date, datetime
-import os
+
 os.environ["DUEPING_ENABLE_RESET"] = "1"
 import threading
-from typing import List
+
 import pytest
 from starlette.testclient import TestClient
 
 from app.api.deps import get_facade, set_facade
 from app.api.main import app
-from app.application.event_bus import EventBus, mutate_invoice, save_and_publish
+from app.application.event_bus import EventBus, mutate_invoice
 from app.application.facade import CollectionFacade
-from app.application.ports import FailureLogRepository, HandlerFailure
-from app.domain.audit import AuditEvent, Notification
-from app.domain.client import Client
+from app.application.ports import HandlerFailure
 from app.domain.enums import ActionSource, Priority
 from app.domain.events import DomainEvent
 from app.domain.exceptions import ConcurrencyConflict
@@ -26,13 +25,8 @@ from app.domain.money import Money
 from app.domain.next_action import NextAction
 from app.infrastructure.db import create_all, drop_all
 from app.infrastructure.in_memory_repositories import (
-    InMemoryAuditRepository,
-    InMemoryClientRepository,
     InMemoryFailureLogRepository,
     InMemoryInvoiceRepository,
-    InMemoryNotificationRepository,
-    InMemoryProjectRepository,
-    InMemorySettingsRepository,
 )
 
 NOW = datetime(2026, 3, 1, 12, 0, 0)

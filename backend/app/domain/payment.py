@@ -1,12 +1,13 @@
 """Payment value object — immutable record of a payment received."""
 from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
-from app.domain.money import Money
 from app.domain.enums import PaymentMethod
+from app.domain.money import Money
 
 
 # PATTERN: Value Object — Payment has identity (id) but is immutable after creation.
@@ -18,7 +19,7 @@ class Payment:
     amount: Money
     payment_date: date
     method: PaymentMethod
-    reference_number: Optional[str]
+    reference_number: str | None
     recorded_at: datetime
 
     def __init__(
@@ -27,8 +28,8 @@ class Payment:
         payment_date: date,
         method: PaymentMethod,
         recorded_at: datetime,
-        reference_number: Optional[str] = None,
-        id: Optional[str] = None,
+        reference_number: str | None = None,
+        id: str | None = None,
     ) -> None:
         object.__setattr__(self, "id", id or uuid.uuid4().hex)
         object.__setattr__(self, "amount", amount)
@@ -38,7 +39,7 @@ class Payment:
         object.__setattr__(self, "recorded_at", recorded_at)
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "Payment":
+    def reconstitute(cls, **fields: Any) -> Payment:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

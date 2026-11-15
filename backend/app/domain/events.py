@@ -4,9 +4,9 @@ Each event is a plain dataclass carrying enough data for listeners to act
 without reloading anything from the repository.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime, date
-from typing import Optional
+
+from dataclasses import dataclass
+from datetime import date, datetime
 
 from app.domain.money import Money
 
@@ -16,8 +16,8 @@ class DomainEvent:
     """Base class for all domain events."""
 
     occurred_at: datetime
-    invoice_id: Optional[str] = None
-    invoice_number: Optional[str] = None
+    invoice_id: str | None = None
+    invoice_number: str | None = None
 
     @property
     def event_type(self) -> str:
@@ -44,7 +44,7 @@ class PaymentReceived(DomainEvent):
     """A payment has been recorded against the invoice."""
 
     payment_id: str = ""
-    amount: Optional[Money] = None
+    amount: Money | None = None
     fully_paid: bool = False
 
     def describe(self) -> str:
@@ -117,7 +117,7 @@ class PromiseRecorded(DomainEvent):
     """A payment promise has been recorded."""
 
     promise_id: str = ""
-    promised_date: Optional[date] = None
+    promised_date: date | None = None
 
     def describe(self) -> str:
         d = self.promised_date.strftime("%d %b %Y") if self.promised_date else "unknown"
@@ -141,7 +141,7 @@ class PromiseMissed(DomainEvent):
 
     promise_id: str = ""
     client_id: str = ""
-    promised_date: Optional[date] = None
+    promised_date: date | None = None
 
     def describe(self) -> str:
         d = self.promised_date.strftime("%d %b %Y") if self.promised_date else "unknown"
@@ -228,7 +228,7 @@ class ActionRescheduled(DomainEvent):
     """A next action has been rescheduled to a new due date."""
 
     action_id: str = ""
-    new_date: Optional[date] = None
+    new_date: date | None = None
 
     def describe(self) -> str:
         date_str = self.new_date.isoformat() if self.new_date else "unknown"
@@ -240,7 +240,7 @@ class ActionsCancelled(DomainEvent):
     """Pending actions have been cancelled."""
 
     count: int = 0
-    source: Optional[str] = None
+    source: str | None = None
 
     def describe(self) -> str:
         src = f" (source: {self.source})" if self.source else ""

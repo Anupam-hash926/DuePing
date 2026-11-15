@@ -1,19 +1,27 @@
 """Contract tests parameterized to execute against both InMemory and SQLite repositories."""
 from __future__ import annotations
-from datetime import date, datetime, timedelta
+
+from datetime import date, timedelta
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.application.ports import HandlerFailure
 from app.domain.audit import AuditEvent, Notification
 from app.domain.client import Client
 from app.domain.document import SupportingDocument
 from app.domain.enums import (
-    ActionSource, BlockerType, Channel, DocumentType, FollowUpOutcome,
-    InvoiceStatus, PaymentMethod, Priority,
+    ActionSource,
+    BlockerType,
+    Channel,
+    DocumentType,
+    FollowUpOutcome,
+    InvoiceStatus,
+    PaymentMethod,
+    Priority,
 )
 from app.domain.exceptions import ConcurrencyConflict, EntityNotFound
-from app.application.ports import HandlerFailure
 from app.domain.invoice import Invoice
 from app.domain.money import Money
 from app.domain.next_action import NextAction
@@ -21,14 +29,22 @@ from app.domain.payment import Payment
 from app.domain.project import Project
 from app.infrastructure.db import Base
 from app.infrastructure.in_memory_repositories import (
-    InMemoryAuditRepository, InMemoryClientRepository, InMemoryFailureLogRepository,
-    InMemoryInvoiceRepository, InMemoryNotificationRepository,
-    InMemoryProjectRepository, InMemorySettingsRepository,
+    InMemoryAuditRepository,
+    InMemoryClientRepository,
+    InMemoryFailureLogRepository,
+    InMemoryInvoiceRepository,
+    InMemoryNotificationRepository,
+    InMemoryProjectRepository,
+    InMemorySettingsRepository,
 )
 from app.infrastructure.sqlalchemy_repositories import (
-    SqlAlchemyAuditRepository, SqlAlchemyClientRepository, SqlAlchemyFailureLogRepository,
-    SqlAlchemyInvoiceRepository, SqlAlchemyNotificationRepository,
-    SqlAlchemyProjectRepository, SqlAlchemySettingsRepository,
+    SqlAlchemyAuditRepository,
+    SqlAlchemyClientRepository,
+    SqlAlchemyFailureLogRepository,
+    SqlAlchemyInvoiceRepository,
+    SqlAlchemyNotificationRepository,
+    SqlAlchemyProjectRepository,
+    SqlAlchemySettingsRepository,
 )
 from tests.domain.conftest import NOW, TODAY
 
@@ -488,6 +504,7 @@ class TestAuxiliaryRepositoriesContract:
         if repo_bundle["backend"] != "sqlite":
             pytest.skip("SQLite specific foreign key test")
         from sqlalchemy.exc import IntegrityError
+
         from app.infrastructure.orm_models import PaymentModel
         session_factory = repo_bundle["session_factory"]
         with session_factory() as session:
@@ -506,8 +523,9 @@ class TestAuxiliaryRepositoriesContract:
     def test_sqlite_cascade_delete(self, repo_bundle):
         if repo_bundle["backend"] != "sqlite":
             pytest.skip("SQLite specific cascade test")
-        from sqlalchemy import select, delete
-        from app.infrastructure.orm_models import InvoiceModel, PaymentModel, ClientModel
+        from sqlalchemy import delete, select
+
+        from app.infrastructure.orm_models import ClientModel, InvoiceModel, PaymentModel
         session_factory = repo_bundle["session_factory"]
         with session_factory() as session:
             client = ClientModel(id="c_fk", name="FK Client", email="fk@test.com", created_at=NOW)

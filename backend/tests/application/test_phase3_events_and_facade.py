@@ -1,6 +1,8 @@
 """Tests for Phase 3: EventBus, Listeners, ActionCenter, DailyCheck, Reports, and CollectionFacade."""
 from __future__ import annotations
-from datetime import date, datetime, timedelta
+
+from datetime import date, timedelta
+
 import pytest
 
 from app.application.action_center import ActionCenter
@@ -8,34 +10,40 @@ from app.application.clock import SimulatedClock
 from app.application.daily_check import DailyCheckService
 from app.application.event_bus import EventBus
 from app.application.facade import CollectionFacade
-from app.application.services.client_service import ClientService
-from app.application.services.invoice_commands import InvoiceCommands
-from app.application.services.reminder_service import ReminderService
-from app.application.services.system_service import SystemService
 from app.application.importing import InvoiceImporter
 from app.application.invoice_factory import InvoiceFactory
 from app.application.listeners import (
-    ActionGenerationListener, AuditLogListener, NotificationListener, ReliabilityListener,
+    ActionGenerationListener,
+    AuditLogListener,
+    NotificationListener,
+    ReliabilityListener,
 )
 from app.application.playbook import ResolutionPlaybook
 from app.application.prioritization import PrioritizationRegistry
 from app.application.reminders import ReminderFactory
-from app.application.reports import AgingBucket, ReportService
+from app.application.reports import ReportService
+from app.application.services.client_service import ClientService
+from app.application.services.invoice_commands import InvoiceCommands
+from app.application.services.reminder_service import ReminderService
+from app.application.services.system_service import SystemService
 from app.domain.enums import (
-    ActionSource, ActionStatus, BlockerStatus, BlockerType, Channel,
-    FollowUpOutcome, InvoiceStatus, PaymentMethod, Priority, ReminderTone,
-)
-from app.domain.events import (
-    BlockerRaised, BlockerResolved, InvoiceBecameOverdue, InvoicePaid,
-    PaymentReceived, PromiseKept, PromiseMissed,
+    ActionSource,
+    ActionStatus,
+    BlockerType,
+    InvoiceStatus,
+    PaymentMethod,
+    Priority,
 )
 from app.domain.money import Money
 from app.infrastructure.in_memory_repositories import (
-    InMemoryAuditRepository, InMemoryClientRepository,
-    InMemoryInvoiceRepository, InMemoryNotificationRepository,
-    InMemoryProjectRepository, InMemorySettingsRepository,
+    InMemoryAuditRepository,
+    InMemoryClientRepository,
+    InMemoryInvoiceRepository,
+    InMemoryNotificationRepository,
+    InMemoryProjectRepository,
+    InMemorySettingsRepository,
 )
-from tests.domain.conftest import NOW, TODAY
+from tests.domain.conftest import TODAY
 
 
 @pytest.fixture
@@ -422,7 +430,7 @@ class TestFacadeSystemSettings:
     def test_facade_update_client_duplicate_email_raises_duplicate_client(self, env):
         from app.domain.exceptions import DuplicateClient
         facade = env["facade"]
-        c1 = facade.create_client(name="Client 1", email="c1@company.com")
+        facade.create_client(name="Client 1", email="c1@company.com")
         c2 = facade.create_client(name="Client 2", email="c2@company.com")
         with pytest.raises(DuplicateClient):
             facade.update_client(c2.id, email="C1@company.com")

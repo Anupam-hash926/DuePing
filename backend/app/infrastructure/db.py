@@ -1,7 +1,8 @@
 """Database configuration and session management using SQLAlchemy 2.x."""
 from __future__ import annotations
+
 import os
-from typing import Generator
+from collections.abc import Generator
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker

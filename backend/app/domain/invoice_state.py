@@ -4,8 +4,9 @@
 The Invoice (Context) delegates all state-specific behaviour here.
 """
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING
 
 from app.domain.enums import InvoiceStatus
 from app.domain.exceptions import InvalidStateTransition
@@ -26,22 +27,22 @@ class InvoiceState(ABC):
     @abstractmethod
     def status(self) -> InvoiceStatus: ...
 
-    def send(self, inv: "Invoice") -> None:
+    def send(self, inv: Invoice) -> None:
         raise InvalidStateTransition(f"send not allowed in {self.status.name}")
 
-    def record_payment(self, inv: "Invoice", payment: "Payment") -> None:
+    def record_payment(self, inv: Invoice, payment: Payment) -> None:
         raise InvalidStateTransition(f"record_payment not allowed in {self.status.name}")
 
-    def mark_disputed(self, inv: "Invoice") -> None:
+    def mark_disputed(self, inv: Invoice) -> None:
         raise InvalidStateTransition(f"mark_disputed not allowed in {self.status.name}")
 
-    def resolve_dispute(self, inv: "Invoice") -> None:
+    def resolve_dispute(self, inv: Invoice) -> None:
         raise InvalidStateTransition(f"resolve_dispute not allowed in {self.status.name}")
 
-    def write_off(self, inv: "Invoice") -> None:
+    def write_off(self, inv: Invoice) -> None:
         raise InvalidStateTransition(f"write_off not allowed in {self.status.name}")
 
-    def allowed_operations(self) -> Set[str]:
+    def allowed_operations(self) -> set[str]:
         return set()
 
 
@@ -55,23 +56,23 @@ class DraftState(InvoiceState):
     def status(self) -> InvoiceStatus:
         return InvoiceStatus.DRAFT
 
-    def send(self, inv: "Invoice") -> None:
+    def send(self, inv: Invoice) -> None:
         inv._set_state(SentState())
 
-    def allowed_operations(self) -> Set[str]:
+    def allowed_operations(self) -> set[str]:
         return {"edit", "send"}
 
 
 class _ActiveState(InvoiceState):
     """Base state for active invoice states (Sent, PartiallyPaid, Disputed)."""
 
-    def mark_disputed(self, inv: "Invoice") -> None:
+    def mark_disputed(self, inv: Invoice) -> None:
         inv._set_state(DisputedState())
 
-    def write_off(self, inv: "Invoice") -> None:
+    def write_off(self, inv: Invoice) -> None:
         inv._set_state(WrittenOffState())
 
-    def allowed_operations(self) -> Set[str]:
+    def allowed_operations(self) -> set[str]:
         return {
             "record_payment", "raise_blocker", "log_follow_up",
             "record_promise", "attach_document", "send_reminder", "write_off",
@@ -88,7 +89,7 @@ class SentState(_ActiveState):
     def status(self) -> InvoiceStatus:
         return InvoiceStatus.SENT
 
-    def record_payment(self, inv: "Invoice", payment: "Payment") -> None:
+    def record_payment(self, inv: Invoice, payment: Payment) -> None:
         # State transition calculated BEFORE payment is appended to inv.payments.
         # remaining = outstanding() - payment.amount
         remaining = inv.outstanding().subtract(payment.amount)
@@ -108,7 +109,7 @@ class PartiallyPaidState(_ActiveState):
     def status(self) -> InvoiceStatus:
         return InvoiceStatus.PARTIALLY_PAID
 
-    def record_payment(self, inv: "Invoice", payment: "Payment") -> None:
+    def record_payment(self, inv: Invoice, payment: Payment) -> None:
         remaining = inv.outstanding().subtract(payment.amount)
         if remaining.is_zero():
             inv._set_state(PaidState())
@@ -125,13 +126,13 @@ class DisputedState(_ActiveState):
     def status(self) -> InvoiceStatus:
         return InvoiceStatus.DISPUTED
 
-    def record_payment(self, inv: "Invoice", payment: "Payment") -> None:
+    def record_payment(self, inv: Invoice, payment: Payment) -> None:
         remaining = inv.outstanding().subtract(payment.amount)
         if remaining.is_zero():
             inv._set_state(PaidState())
         # else stays DISPUTED
 
-    def resolve_dispute(self, inv: "Invoice") -> None:
+    def resolve_dispute(self, inv: Invoice) -> None:
         if inv.amount_paid().is_positive():
             inv._set_state(PartiallyPaidState())
         else:
@@ -148,7 +149,7 @@ class PaidState(InvoiceState):
     def status(self) -> InvoiceStatus:
         return InvoiceStatus.PAID
 
-    def allowed_operations(self) -> Set[str]:
+    def allowed_operations(self) -> set[str]:
         return {"attach_document"}
 
 
@@ -162,7 +163,7 @@ class WrittenOffState(InvoiceState):
     def status(self) -> InvoiceStatus:
         return InvoiceStatus.WRITTEN_OFF
 
-    def allowed_operations(self) -> Set[str]:
+    def allowed_operations(self) -> set[str]:
         return {"attach_document"}
 
 

@@ -1,9 +1,10 @@
 """Project entity — an optional grouping of invoices for a client."""
 from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Optional
+from typing import Any
 
 from app.domain.exceptions import DomainValidationError
 
@@ -26,7 +27,7 @@ class Project:
         start_date: date,
         description: str = "",
         status: str = "Active",
-        id: Optional[str] = None,
+        id: str | None = None,
     ) -> None:
         if not project_name or not project_name.strip():
             raise DomainValidationError("Project name cannot be empty")
@@ -38,7 +39,7 @@ class Project:
         self.status = status
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "Project":
+    def reconstitute(cls, **fields: Any) -> Project:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         for k, v in fields.items():

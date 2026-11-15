@@ -1,13 +1,10 @@
 """Shared fixtures for domain tests."""
-import pytest
 from datetime import date, datetime, timedelta
-from decimal import Decimal
 
-from app.domain.money import Money
 from app.domain.enums import PaymentMethod
-from app.domain.payment import Payment
 from app.domain.invoice import Invoice
-
+from app.domain.money import Money
+from app.domain.payment import Payment
 
 TODAY = date(2026, 11, 10)
 NOW = datetime(2026, 11, 10, 9, 0, 0)

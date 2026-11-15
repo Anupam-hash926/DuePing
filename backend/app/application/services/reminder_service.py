@@ -1,6 +1,5 @@
 """Reminder generation application service."""
 from __future__ import annotations
-from typing import Optional
 
 from app.application.ports import ClientRepository, Clock, InvoiceRepository, SettingsRepository
 from app.application.reminders import GeneratedReminder, ReminderFactory
@@ -25,7 +24,7 @@ class ReminderService:
         self.clock = clock
 
     def generate_reminder(
-        self, invoice_id: str, tone: Optional[ReminderTone] = None
+        self, invoice_id: str, tone: ReminderTone | None = None
     ) -> GeneratedReminder:
         today = self.clock.today()
         invoice = self.invoice_repo.get(invoice_id)

@@ -1,8 +1,6 @@
 """Invoice API endpoints covering lifecycle, payments, blockers, actions, and reminders."""
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import get_facade
@@ -52,17 +50,17 @@ def _present_invoice(facade: CollectionFacade, invoice: Invoice) -> InvoiceRead:
     return invoice_to_dto(invoice, client, project, today)
 
 
-@router.get("/invoices", response_model=List[InvoiceSummaryRead])
+@router.get("/invoices", response_model=list[InvoiceSummaryRead])
 def list_invoices(
     response: Response,
-    status: Optional[str] = Query(None),
-    client_id: Optional[str] = Query(None),
-    overdue: Optional[bool] = Query(None),
-    q: Optional[str] = Query(None),
+    status: str | None = Query(None),
+    client_id: str | None = Query(None),
+    overdue: bool | None = Query(None),
+    q: str | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     facade: CollectionFacade = Depends(get_facade),
-) -> List[InvoiceSummaryRead]:
+) -> list[InvoiceSummaryRead]:
     status_enum = InvoiceStatus[status] if status else None
     total = facade.count_invoices()
     response.headers["X-Total-Count"] = str(total)
@@ -84,7 +82,7 @@ def list_invoices(
             client_cache[cid] = facade.client_repo.get(cid)
         return client_cache[cid]
 
-    def get_project(pid: Optional[str]):
+    def get_project(pid: str | None):
         if not pid:
             return None
         if pid not in project_cache:
@@ -341,7 +339,7 @@ def reschedule_action(
 @router.get("/invoices/{id}/reminder", response_model=ReminderRead)
 def get_reminder(
     id: str,
-    tone: Optional[str] = Query(None),
+    tone: str | None = Query(None),
     facade: CollectionFacade = Depends(get_facade),
 ) -> ReminderRead:
     tone_enum = ReminderTone[tone] if tone else None

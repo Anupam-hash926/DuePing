@@ -1,20 +1,26 @@
 """Unit tests for Client, Project, NextAction, SupportingDocument, AuditEvent, Notification."""
 from __future__ import annotations
-from datetime import date, datetime, timedelta
+
+from datetime import timedelta
+
 import pytest
 
-from app.domain.client import Client
-from app.domain.project import Project
-from app.domain.next_action import NextAction
-from app.domain.document import SupportingDocument
 from app.domain.audit import AuditEvent, Notification
-from app.domain.payment import Payment
+from app.domain.client import Client
+from app.domain.document import SupportingDocument
 from app.domain.enums import (
-    Priority, ActionStatus, ActionSource, DocumentType, PaymentMethod, InvoiceStatus,
+    ActionSource,
+    ActionStatus,
+    DocumentType,
+    PaymentMethod,
+    Priority,
 )
 from app.domain.exceptions import DomainValidationError, InvalidStateTransition
 from app.domain.money import Money
-from tests.domain.conftest import TODAY, NOW, make_invoice
+from app.domain.next_action import NextAction
+from app.domain.payment import Payment
+from app.domain.project import Project
+from tests.domain.conftest import NOW, TODAY, make_invoice
 
 
 class TestClientUnit:

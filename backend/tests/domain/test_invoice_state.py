@@ -1,21 +1,29 @@
 """Tests for the Invoice state machine and Invoice aggregate."""
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
+import pytest
+
+from app.domain.document import SupportingDocument
+from app.domain.enums import (
+    BlockerType,
+    DocumentType,
+    InvoiceStatus,
+    PaymentMethod,
+)
+from app.domain.exceptions import DomainValidationError, InvalidStateTransition
 from app.domain.invoice import Invoice
 from app.domain.invoice_state import (
-    DraftState, SentState, PartiallyPaidState, DisputedState,
-    PaidState, WrittenOffState, state_for,
+    DisputedState,
+    DraftState,
+    PaidState,
+    PartiallyPaidState,
+    SentState,
+    WrittenOffState,
+    state_for,
 )
-from app.domain.enums import InvoiceStatus, BlockerType, Channel, FollowUpOutcome, DocumentType
-from app.domain.exceptions import DomainValidationError, InvalidStateTransition
 from app.domain.money import Money
 from app.domain.payment import Payment
-from app.domain.enums import PaymentMethod
-from app.domain.document import SupportingDocument
-
-from tests.domain.conftest import TODAY, NOW, make_invoice, make_payment
-
+from tests.domain.conftest import NOW, TODAY, make_invoice, make_payment
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

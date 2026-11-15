@@ -7,8 +7,8 @@ Enums are stored as their .name string representations.
 Child tables configure ON DELETE CASCADE.
 """
 from __future__ import annotations
+
 from datetime import date, datetime
-from typing import List, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -24,17 +24,17 @@ class ClientModel(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    company_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     promises_kept: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     promises_missed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     # Relationships
-    projects: Mapped[List[ProjectModel]] = relationship(
+    projects: Mapped[list[ProjectModel]] = relationship(
         "ProjectModel", back_populates="client", cascade="all, delete-orphan"
     )
-    invoices: Mapped[List[InvoiceModel]] = relationship(
+    invoices: Mapped[list[InvoiceModel]] = relationship(
         "InvoiceModel", back_populates="client", cascade="all, delete-orphan"
     )
 
@@ -54,7 +54,7 @@ class ProjectModel(Base):
     status: Mapped[str] = mapped_column(String(50), default="Active", nullable=False)
 
     client: Mapped[ClientModel] = relationship("ClientModel", back_populates="projects")
-    invoices: Mapped[List[InvoiceModel]] = relationship("InvoiceModel", back_populates="project")
+    invoices: Mapped[list[InvoiceModel]] = relationship("InvoiceModel", back_populates="project")
 
 
 class InvoiceModel(Base):
@@ -67,7 +67,7 @@ class InvoiceModel(Base):
     client_id: Mapped[str] = mapped_column(
         String(32), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    project_id: Mapped[Optional[str]] = mapped_column(
+    project_id: Mapped[str | None] = mapped_column(
         String(32), ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True
     )
     issue_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -82,24 +82,24 @@ class InvoiceModel(Base):
 
     # Relationships
     client: Mapped[ClientModel] = relationship("ClientModel", back_populates="invoices")
-    project: Mapped[Optional[ProjectModel]] = relationship("ProjectModel", back_populates="invoices")
+    project: Mapped[ProjectModel | None] = relationship("ProjectModel", back_populates="invoices")
 
-    payments: Mapped[List[PaymentModel]] = relationship(
+    payments: Mapped[list[PaymentModel]] = relationship(
         "PaymentModel", back_populates="invoice", cascade="all, delete-orphan", order_by="PaymentModel.recorded_at"
     )
-    blockers: Mapped[List[BlockerModel]] = relationship(
+    blockers: Mapped[list[BlockerModel]] = relationship(
         "BlockerModel", back_populates="invoice", cascade="all, delete-orphan", order_by="BlockerModel.created_at"
     )
-    promises: Mapped[List[PromiseModel]] = relationship(
+    promises: Mapped[list[PromiseModel]] = relationship(
         "PromiseModel", back_populates="invoice", cascade="all, delete-orphan", order_by="PromiseModel.created_at"
     )
-    follow_ups: Mapped[List[FollowUpModel]] = relationship(
+    follow_ups: Mapped[list[FollowUpModel]] = relationship(
         "FollowUpModel", back_populates="invoice", cascade="all, delete-orphan", order_by="FollowUpModel.contact_date"
     )
-    documents: Mapped[List[DocumentModel]] = relationship(
+    documents: Mapped[list[DocumentModel]] = relationship(
         "DocumentModel", back_populates="invoice", cascade="all, delete-orphan", order_by="DocumentModel.uploaded_at"
     )
-    actions: Mapped[List[NextActionModel]] = relationship(
+    actions: Mapped[list[NextActionModel]] = relationship(
         "NextActionModel", back_populates="invoice", cascade="all, delete-orphan", order_by="NextActionModel.due_date"
     )
 
@@ -116,7 +116,7 @@ class PaymentModel(Base):
     amount_minor: Mapped[int] = mapped_column(Integer, nullable=False)
     payment_date: Mapped[date] = mapped_column(Date, nullable=False)
     method: Mapped[str] = mapped_column(String(32), nullable=False)
-    reference_number: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    reference_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     invoice: Mapped[InvoiceModel] = relationship("InvoiceModel", back_populates="payments")
@@ -133,10 +133,10 @@ class BlockerModel(Base):
     )
     type: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    assigned_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    assigned_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="OPEN", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     invoice: Mapped[InvoiceModel] = relationship("InvoiceModel", back_populates="blockers")
 
@@ -151,7 +151,7 @@ class PromiseModel(Base):
         String(32), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True
     )
     promised_date: Mapped[date] = mapped_column(Date, nullable=False)
-    amount_minor: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    amount_minor: Mapped[int | None] = mapped_column(Integer, nullable=True)
     note: Mapped[str] = mapped_column(Text, default="", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="PENDING", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -208,9 +208,9 @@ class NextActionModel(Base):
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="PENDING", nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False)
-    source_ref: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    source_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     invoice: Mapped[InvoiceModel] = relationship("InvoiceModel", back_populates="actions")
 
@@ -223,7 +223,7 @@ class AuditEventModel(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    invoice_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    invoice_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
 

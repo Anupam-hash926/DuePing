@@ -5,8 +5,8 @@ Ensures unique sequence numbering format (DP-YYYY-NNNN) and encapsulation
 of aggregate creation in DRAFT state.
 """
 from __future__ import annotations
+
 from datetime import date, datetime
-from typing import Optional
 
 from app.application.ports import InvoiceRepository
 from app.domain.exceptions import DuplicateInvoiceNumber
@@ -30,8 +30,8 @@ class InvoiceFactory:
         issue_date: date,
         due_date: date,
         now: datetime,
-        invoice_number: Optional[str] = None,
-        project_id: Optional[str] = None,
+        invoice_number: str | None = None,
+        project_id: str | None = None,
     ) -> Invoice:
         """Create a new Invoice in DRAFT status.
 

@@ -1,7 +1,7 @@
 """Client and Project application service."""
 from __future__ import annotations
+
 from datetime import date
-from typing import List, Optional, Tuple
 
 from app.application.ports import ClientRepository, Clock, InvoiceRepository, ProjectRepository
 from app.domain.client import Client
@@ -30,8 +30,8 @@ class ClientService:
         self,
         name: str,
         email: str,
-        phone: Optional[str] = None,
-        company_name: Optional[str] = None,
+        phone: str | None = None,
+        company_name: str | None = None,
     ) -> Client:
         norm_email = email.strip().lower()
         if self.client_repo.find_by_email(norm_email) is not None:
@@ -50,10 +50,10 @@ class ClientService:
     def update_client(
         self,
         id: str,
-        name: Optional[str] = None,
-        email: Optional[str] = None,
-        phone: Optional[str] = None,
-        company_name: Optional[str] = None,
+        name: str | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        company_name: str | None = None,
     ) -> Client:
         client = self.client_repo.get(id)
         if email is not None:
@@ -68,10 +68,10 @@ class ClientService:
     def get_client(self, id: str) -> Client:
         return self.client_repo.get(id)
 
-    def list_clients(self) -> List[Client]:
+    def list_clients(self) -> list[Client]:
         return self.client_repo.list_all()
 
-    def get_client_summary(self, id: str) -> Tuple[Client, Money, List[Invoice]]:
+    def get_client_summary(self, id: str) -> tuple[Client, Money, list[Invoice]]:
         client = self.client_repo.get(id)
         invoices = self.invoice_repo.list_by_client(id)
         outstanding = client.outstanding_balance(invoices)
@@ -82,7 +82,7 @@ class ClientService:
         client_id: str,
         project_name: str,
         description: str = "",
-        start_date: Optional[date] = None,
+        start_date: date | None = None,
     ) -> Project:
         self.client_repo.get(client_id)  # verify existence
         s_date = start_date or self.clock.today()
@@ -98,7 +98,7 @@ class ClientService:
     def get_project(self, id: str) -> Project:
         return self.project_repo.get(id)
 
-    def list_projects(self, client_id: Optional[str] = None) -> List[Project]:
+    def list_projects(self, client_id: str | None = None) -> list[Project]:
         if client_id is not None:
             return self.project_repo.list_by_client(client_id)
         return self.project_repo.list_all()

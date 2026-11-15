@@ -109,26 +109,37 @@ npm run dev
 
 ## Running the Test Suite & Verification
 
-The project includes unit tests, forbidden-import boundary verifications, repository contract suites, and full-flow API integration tests:
+The project includes unit tests, forbidden-import boundary verifications, repository contract suites, full-flow API integration tests, and frontend component tests:
 
 ```bash
+# Using the Makefile
+make test  # runs both backend pytest with coverage and frontend vitest
+make lint  # runs ruff, mypy, tsc, and eslint
+
+# Or directly in backend:
 cd backend
 source .venv/bin/activate
-
-# Run all 254 tests with code coverage report
 PYTHONPATH=. .venv/bin/pytest tests/ --cov=app --cov-report=term-missing
 
-# Run domain isolation / forbidden imports test
-PYTHONPATH=. .venv/bin/pytest tests/domain/test_forbidden_imports.py
-
-# Run repository contract tests (SQLite & In-Memory)
-PYTHONPATH=. .venv/bin/pytest tests/infrastructure/test_repository_contracts.py
-
-# Run full-flow API & error-mapping tests
-PYTHONPATH=. .venv/bin/pytest tests/api/test_api_flow.py -v
+# And in frontend:
+cd frontend
+npm test -- --run
+npm run lint
 ```
 
-**Test Coverage Benchmark:** 254 passed in ~1.15s with **96% line coverage**.
+**Test Coverage Benchmark:** **304 backend tests passed** in ~1.4s with **96% line coverage**, plus **19 frontend unit tests passed**.
+
+### Database Reset Note (Schema Hardening)
+The application database includes hardened schemas:
+1. `version` column on invoices enforcing optimistic locking against concurrent edits.
+2. `unique` email constraint on clients preventing duplicates.
+3. `handler_failures` ledger recording asynchronous event delivery errors.
+
+To reset the database cleanly from scratch:
+```bash
+make seed
+# Or: rm -f backend/dueping.db && PYTHONPATH=. backend/.venv/bin/python -m app.infrastructure.seed
+```
 
 ---
 

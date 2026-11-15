@@ -1,5 +1,6 @@
 """All domain enumerations — no stringly-typed state anywhere in the domain."""
 from __future__ import annotations
+
 from enum import Enum
 
 

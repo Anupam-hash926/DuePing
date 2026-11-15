@@ -4,15 +4,22 @@ Pure translation functions; invokes reconstitution methods on domain entities
 without re-emitting events or performing creation side-effects.
 """
 from __future__ import annotations
-from typing import List
 
 from app.domain.audit import AuditEvent, Notification
 from app.domain.blocker import PaymentBlocker
 from app.domain.client import Client
 from app.domain.document import SupportingDocument
 from app.domain.enums import (
-    ActionSource, ActionStatus, BlockerStatus, BlockerType, Channel,
-    DocumentType, FollowUpOutcome, InvoiceStatus, PaymentMethod, Priority,
+    ActionSource,
+    ActionStatus,
+    BlockerStatus,
+    BlockerType,
+    Channel,
+    DocumentType,
+    FollowUpOutcome,
+    InvoiceStatus,
+    PaymentMethod,
+    Priority,
     PromiseStatus,
 )
 from app.domain.follow_up import FollowUp
@@ -23,11 +30,18 @@ from app.domain.payment import Payment
 from app.domain.project import Project
 from app.domain.promise import PaymentPromise
 from app.infrastructure.orm_models import (
-    AuditEventModel, BlockerModel, ClientModel, DocumentModel, FollowUpModel,
-    InvoiceModel, NextActionModel, NotificationModel, PaymentModel, ProjectModel,
+    AuditEventModel,
+    BlockerModel,
+    ClientModel,
+    DocumentModel,
+    FollowUpModel,
+    InvoiceModel,
+    NextActionModel,
+    NotificationModel,
+    PaymentModel,
+    ProjectModel,
     PromiseModel,
 )
-
 
 # ── Client Mapping ────────────────────────────────────────────────────────────
 

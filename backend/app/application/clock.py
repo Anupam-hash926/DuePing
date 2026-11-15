@@ -1,7 +1,7 @@
 """Clock implementations: real system clock and demo-ready simulated clock."""
 from __future__ import annotations
-from datetime import date, datetime, timezone
-from typing import Optional
+
+from datetime import UTC, date, datetime
 
 from app.application.ports import Clock, SettingsRepository
 
@@ -10,11 +10,11 @@ class SystemClock(Clock):
     """Real clock reading UTC time from the system."""
 
     def today(self) -> date:
-        return datetime.now(timezone.utc).date()
+        return datetime.now(UTC).date()
 
     def now(self) -> datetime:
         # Return naive UTC datetime or UTC-aware as per convention
-        return datetime.now(timezone.utc).replace(tzinfo=None)
+        return datetime.now(UTC).replace(tzinfo=None)
 
 
 class SimulatedClock(Clock):
@@ -28,7 +28,7 @@ class SimulatedClock(Clock):
         self.settings = settings
         self._real_clock = SystemClock()
 
-    def _simulated_date(self) -> Optional[date]:
+    def _simulated_date(self) -> date | None:
         val = self.settings.get("simulated_date")
         if val and val.strip():
             try:

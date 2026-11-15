@@ -1,13 +1,12 @@
 """Tests for PaymentBlocker domain entity."""
+from datetime import timedelta
+
 import pytest
-from datetime import datetime, timedelta
 
 from app.domain.blocker import PaymentBlocker
-from app.domain.enums import BlockerType, BlockerStatus, InvoiceStatus
-from app.domain.exceptions import InvalidStateTransition, DomainValidationError
-
-from tests.domain.conftest import TODAY, NOW, make_invoice, make_payment
-
+from app.domain.enums import BlockerStatus, BlockerType, InvoiceStatus
+from app.domain.exceptions import InvalidStateTransition
+from tests.domain.conftest import NOW, TODAY, make_invoice, make_payment
 
 LATER = NOW + timedelta(hours=2)
 
@@ -179,7 +178,7 @@ class TestResolveBlocker:
     def test_resolve_one_of_two_disputed_blockers_keeps_disputed(self):
         inv = sent_invoice()
         b1 = inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "dispute 1", None, NOW)
-        b2 = inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "dispute 2", None, NOW)
+        inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "dispute 2", None, NOW)
         inv.resolve_blocker(b1.id, LATER)
         # Still disputed because b2 is open
         assert inv.status == InvoiceStatus.DISPUTED
@@ -201,8 +200,8 @@ class TestResolveBlocker:
         assert b2 in inv.open_blockers()
 
     def test_full_payment_resolves_open_blockers(self):
-        from tests.domain.conftest import make_payment, TODAY
         from app.domain.enums import BlockerStatus
+        from tests.domain.conftest import TODAY, make_payment
         inv = sent_invoice()
         b = inv.raise_blocker(BlockerType.MISSING_PO, "need PO", None, NOW)
         assert b.status == BlockerStatus.OPEN
@@ -214,8 +213,8 @@ class TestResolveBlocker:
         assert len(inv.open_blockers()) == 0
 
     def test_disputed_invoice_paid_in_full_resolves_dispute_blocker(self):
-        from tests.domain.conftest import make_payment, TODAY
         from app.domain.enums import BlockerStatus
+        from tests.domain.conftest import TODAY, make_payment
         inv = sent_invoice()
         b = inv.raise_blocker(BlockerType.DISPUTED_AMOUNT, "disputed pricing", None, NOW)
         assert inv.status == InvoiceStatus.DISPUTED

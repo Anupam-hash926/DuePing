@@ -238,23 +238,23 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 ## 10. Testing Summary and Screenshot Catalog
 
 ### 10.1 Testing Summary
-- **Total Tests:** 254 test cases executed and passed.
-- **Total Coverage:** **96% line coverage** across `app` package.
+- **Total Backend Tests:** **304 test cases executed and passed** (0 failures, 2 skipped).
+- **Total Frontend Tests:** **19 test cases executed and passed** across UI primitives and Phase 9 integration suites.
+- **Backend Code Coverage:** **96% line coverage** across the `app` package.
 - **Layers Verified:**
-  - `domain`: 98% coverage (Money math, all state transition table cells, entities, promises, blockers, domain events, forbidden imports check).
-  - `application`: 94% coverage (Playbook, prioritization strategies, reminder template methods, CSV importer validator chain, event bus, listeners, facade, reports).
-  - `infrastructure`: 95% coverage (SQLAlchemy and in-memory repository contract suite, mappers, seed).
-  - `api`: 94% coverage (Full-flow test, error mappings 404/409/422, OpenAPI contract).
+  - `domain`: 98% coverage (Money arithmetic, state machine matrix, entities, promises, blockers, domain events, architectural forbidden imports check).
+  - `application`: 95% coverage (ResolutionPlaybook, prioritization strategies, reminder templates, CSV validator chain, thread-safe event bus, listeners, facade, reports, concurrency locking).
+  - `infrastructure`: 95% coverage (SQLAlchemy and in-memory repository contract suites, mappers, seed).
+  - `api`: 95% coverage (Full-flow test, error mappings 404/409/422, OpenAPI contracts).
 
-### 10.2 Screenshot Catalog for Documentation & Submission
-Capture the following screenshots following the Section 17.2 demo script:
-1. `docs/screenshots/01-action-centre.png`: Action Centre home view showing priority-ranked tasks with "Risk-weighted" strategy.
-2. `docs/screenshots/02-action-centre-amount.png`: Action Centre switched to "Largest amount first" strategy showing re-ordered cards.
-3. `docs/screenshots/03-invoice-7-orbit-details.png`: Invoice detail view for `INV-OL-07` showing `WRONG_DETAILS` blocker and PENDING promise.
-4. `docs/screenshots/04-daily-check-promise-missed.png`: Simulated date advanced to T+4 and Daily Check triggered; summary toast displayed; Orbit Labs score dropped to 0%.
-5. `docs/screenshots/05-reminder-preview.png`: Reminder panel on `INV-OL-07` showing FIRM tone with rendered subject, blocker sentence, and missed promise sentence.
-6. `docs/screenshots/06-dispute-resolution.png`: Invoice `INV-GL-05` in DISPUTED state with partial payment recorded; resolve blocker modal.
-7. `docs/screenshots/07-invoice-11-paid.png`: Full payment recorded on `INV-SR-11`, status badge showing green PAID with zero pending actions.
-8. `docs/screenshots/08-dashboard-kpis-charts.png`: Dashboard view showing Recharts aging schedule, 6-month collection trend line, and KPI cards.
-9. `docs/screenshots/09-csv-import-summary.png`: Import page showing `sample_invoices.csv` result: 2 imported, 2 rejected with row validation errors.
-10. `docs/screenshots/10-audit-trail.png`: Audit log view showing immutable domain event ledger.
+### 10.2 Real Screenshot Catalog
+The following visual assets are captured in `docs/screenshots/` reflecting the Apple/iOS 7 aesthetic, squircle tiles, and Lando typography:
+1. `docs/screenshots/01-landing-hero.svg`: Full-height public landing hero with weight 200 typography and floating glass action card.
+2. `docs/screenshots/02-pinned-story.svg`: Interactive 4-beat story demonstrating root-cause blockers resolving into generated next actions.
+3. `docs/screenshots/03-today-action-center.svg`: Action Centre view with large title, simulated date, strategy segmented control, count-up stake summary, and top-ranked FocusCard.
+4. `docs/screenshots/04-overview-dashboard.svg`: Collection dashboard featuring 3 big numerals in weight 200 with count-ups, 5-bucket soft-gradient aging bar, and trend sparkline.
+5. `docs/screenshots/05-invoice-detail-blocker-action.svg`: Invoice detail view showing open blockers paired directly with generated next actions connected by a tint line.
+6. `docs/screenshots/06-reminder-bubble.svg`: Context-aware dynamic follow-up copy generator with tone switcher, chat bubble, and copy-to-clipboard.
+7. `docs/screenshots/07-import-result.svg`: Calm drop zone with dashed outline, processed/imported/rejected metric tiles, and row validation error list.
+8. `docs/screenshots/08-audit-log.svg`: Immutable event trail grouped by day with sticky headers and domain event icons.
+9. `docs/screenshots/09-dark-mode-today.svg`: True black `#000000` dark theme with elevated surfaces and Apple system accents.

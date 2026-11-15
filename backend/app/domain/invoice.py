@@ -1,30 +1,53 @@
 """Invoice aggregate root — owns all child entities and enforces invariants."""
 from __future__ import annotations
+
 import uuid
 from datetime import date, datetime
-from typing import Any, List, Optional, Set
+from typing import Any
 
-from app.domain.enums import (
-    InvoiceStatus, BlockerType, BlockerStatus, ActionSource,
-    Channel, FollowUpOutcome, DocumentType, ReminderTone, PromiseStatus, ActionStatus,
-)
-from app.domain.exceptions import DomainValidationError, InvalidStateTransition, EntityNotFound
-from app.domain.money import Money
-from app.domain.payment import Payment
 from app.domain.blocker import PaymentBlocker
-from app.domain.promise import PaymentPromise
-from app.domain.follow_up import FollowUp
 from app.domain.document import SupportingDocument
-from app.domain.next_action import NextAction
-from app.domain.invoice_state import InvoiceState, DraftState, state_for
-from app.domain.events import (
-    DomainEvent, InvoiceSent, PaymentReceived, InvoicePaid,
-    InvoiceDisputed, DisputeResolved, InvoiceWrittenOff,
-    BlockerRaised, BlockerResolved, PromiseRecorded, PromiseKept,
-    PromiseMissed, InvoiceBecameOverdue, FollowUpLogged, ReminderSent,
-    DocumentAttached, DocumentRemoved, ActionCreated, ActionCompleted,
-    ActionRescheduled, ActionsCancelled,
+from app.domain.enums import (
+    ActionSource,
+    ActionStatus,
+    BlockerStatus,
+    BlockerType,
+    Channel,
+    FollowUpOutcome,
+    InvoiceStatus,
+    PromiseStatus,
+    ReminderTone,
 )
+from app.domain.events import (
+    ActionCompleted,
+    ActionCreated,
+    ActionRescheduled,
+    ActionsCancelled,
+    BlockerRaised,
+    BlockerResolved,
+    DisputeResolved,
+    DocumentAttached,
+    DocumentRemoved,
+    DomainEvent,
+    FollowUpLogged,
+    InvoiceBecameOverdue,
+    InvoiceDisputed,
+    InvoicePaid,
+    InvoiceSent,
+    InvoiceWrittenOff,
+    PaymentReceived,
+    PromiseKept,
+    PromiseMissed,
+    PromiseRecorded,
+    ReminderSent,
+)
+from app.domain.exceptions import DomainValidationError, EntityNotFound, InvalidStateTransition
+from app.domain.follow_up import FollowUp
+from app.domain.invoice_state import DraftState, InvoiceState, state_for
+from app.domain.money import Money
+from app.domain.next_action import NextAction
+from app.domain.payment import Payment
+from app.domain.promise import PaymentPromise
 
 ACTIVE_STATUSES = {InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED}
 
@@ -44,11 +67,11 @@ class Invoice:
         issue_date: date,
         due_date: date,
         now: datetime,
-        project_id: Optional[str] = None,
-        id: Optional[str] = None,
+        project_id: str | None = None,
+        id: str | None = None,
         reminder_level: int = 0,
         overdue_notified: bool = False,
-        created_at: Optional[datetime] = None,
+        created_at: datetime | None = None,
         version: int = 0,
     ) -> None:
         if not invoice_number or not invoice_number.strip():
@@ -63,7 +86,7 @@ class Invoice:
         self.id: str = id or uuid.uuid4().hex
         self.invoice_number: str = invoice_number.strip()
         self.client_id: str = client_id
-        self.project_id: Optional[str] = project_id
+        self.project_id: str | None = project_id
         self.issue_date: date = issue_date
         self.due_date: date = due_date
         self.total: Money = total
@@ -72,18 +95,18 @@ class Invoice:
         self.created_at: datetime = created_at or now
         self.version: int = version
 
-        self._payments: List[Payment] = []
-        self._blockers: List[PaymentBlocker] = []
-        self._promises: List[PaymentPromise] = []
-        self._follow_ups: List[FollowUp] = []
-        self._documents: List[SupportingDocument] = []
-        self._actions: List[NextAction] = []
+        self._payments: list[Payment] = []
+        self._blockers: list[PaymentBlocker] = []
+        self._promises: list[PaymentPromise] = []
+        self._follow_ups: list[FollowUp] = []
+        self._documents: list[SupportingDocument] = []
+        self._actions: list[NextAction] = []
 
         self._state: InvoiceState = DraftState()
-        self._events: List[DomainEvent] = []
+        self._events: list[DomainEvent] = []
 
     @classmethod
-    def reconstitute(cls, **fields: Any) -> "Invoice":
+    def reconstitute(cls, **fields: Any) -> Invoice:
         """Rebuild from stored data without side effects (used by mappers only)."""
         obj = object.__new__(cls)
         obj.id = fields["id"]
@@ -145,7 +168,7 @@ class Invoice:
     def actions(self) -> tuple[NextAction, ...]:
         return tuple(self._actions)
 
-    def get_blocker(self, blocker_id: str) -> Optional[PaymentBlocker]:
+    def get_blocker(self, blocker_id: str) -> PaymentBlocker | None:
         for b in self._blockers:
             if b.id == blocker_id:
                 return b
@@ -157,13 +180,13 @@ class Invoice:
             raise EntityNotFound(f"Blocker {blocker_id} not found on invoice {self.id}")
         return b
 
-    def get_promise(self, promise_id: str) -> Optional[PaymentPromise]:
+    def get_promise(self, promise_id: str) -> PaymentPromise | None:
         for p in self._promises:
             if p.id == promise_id:
                 return p
         return None
 
-    def get_action(self, action_id: str) -> Optional[NextAction]:
+    def get_action(self, action_id: str) -> NextAction | None:
         for a in self._actions:
             if a.id == action_id:
                 return a
@@ -200,28 +223,28 @@ class Invoice:
             return 0
         return (today - self.due_date).days
 
-    def open_blockers(self) -> List[PaymentBlocker]:
+    def open_blockers(self) -> list[PaymentBlocker]:
         """All unresolved blockers on this invoice."""
         return [b for b in self._blockers if b.is_open()]
 
-    def pending_promise(self) -> Optional[PaymentPromise]:
+    def pending_promise(self) -> PaymentPromise | None:
         """Most recent PENDING promise, or None."""
         for p in reversed(self._promises):
             if p.status == PromiseStatus.PENDING:
                 return p
         return None
 
-    def pending_actions(self) -> List[NextAction]:
+    def pending_actions(self) -> list[NextAction]:
         """All PENDING next actions."""
         return [a for a in self._actions if a.status == ActionStatus.PENDING]
 
-    def last_contact_date(self) -> Optional[datetime]:
+    def last_contact_date(self) -> datetime | None:
         """Datetime of the most recent follow-up, or None."""
         if not self._follow_ups:
             return None
         return max(f.contact_date for f in self._follow_ups)
 
-    def allowed_operations(self) -> Set[str]:
+    def allowed_operations(self) -> set[str]:
         """Operations permitted in the current state."""
         return self._state.allowed_operations()
 
@@ -306,7 +329,7 @@ class Invoice:
 
     def raise_blocker(
         self, type: BlockerType, description: str,
-        assigned_to: Optional[str], now: datetime,
+        assigned_to: str | None, now: datetime,
     ) -> PaymentBlocker:
         """Raise a payment blocker on an active invoice."""
         if self.status not in ACTIVE_STATUSES:
@@ -363,7 +386,7 @@ class Invoice:
 
     def record_promise(
         self, promised_date: date, today: date, now: datetime,
-        amount: Optional[Money] = None, note: str = "",
+        amount: Money | None = None, note: str = "",
     ) -> PaymentPromise:
         """Record a payment promise; supersede any existing PENDING promise."""
         if self.status not in ACTIVE_STATUSES:
@@ -382,7 +405,7 @@ class Invoice:
                                      promised_date=promised_date, **self._base()))
         return promise
 
-    def check_promises(self, today: date, now: datetime) -> List[PaymentPromise]:
+    def check_promises(self, today: date, now: datetime) -> list[PaymentPromise]:
         """Mark overdue PENDING promises as MISSED. Returns the list of missed promises."""
         missed = []
         for promise in self._promises:
@@ -429,7 +452,7 @@ class Invoice:
         self._documents.append(doc)
         self._record(DocumentAttached(occurred_at=now, document_id=doc.id, **self._base()))
 
-    def remove_document(self, document_id: str, now: Optional[datetime] = None) -> None:
+    def remove_document(self, document_id: str, now: datetime | None = None) -> None:
         """Remove a document by id; raises EntityNotFound if absent."""
         original = len(self._documents)
         self._documents = [d for d in self._documents if d.id != document_id]
@@ -455,7 +478,7 @@ class Invoice:
         raise EntityNotFound(f"Action {action_id} not found")
 
     def reschedule_action(
-        self, action_id: str, new_date: date, today: date, now: Optional[datetime] = None,
+        self, action_id: str, new_date: date, today: date, now: datetime | None = None,
     ) -> None:
         """Reschedule a PENDING action to a future date."""
         for a in self._actions:
@@ -470,9 +493,9 @@ class Invoice:
 
     def cancel_actions(
         self,
-        source: Optional[ActionSource] = None,
-        source_ref: Optional[str] = None,
-        now: Optional[datetime] = None,
+        source: ActionSource | None = None,
+        source_ref: str | None = None,
+        now: datetime | None = None,
     ) -> int:
         """Cancel PENDING actions matching optional source/source_ref filters."""
         count = 0
@@ -510,9 +533,9 @@ class Invoice:
 
     def update_details(
         self,
-        due_date: Optional[date] = None,
-        total: Optional[Money] = None,
-        project_id: Optional[str] = None,
+        due_date: date | None = None,
+        total: Money | None = None,
+        project_id: str | None = None,
     ) -> None:
         """Update invoice details — only allowed in DRAFT status."""
         if self.status != InvoiceStatus.DRAFT:
@@ -529,7 +552,7 @@ class Invoice:
         if project_id is not None:
             self.project_id = project_id
 
-    def pull_events(self) -> List[DomainEvent]:
+    def pull_events(self) -> list[DomainEvent]:
         """Return and clear the pending domain events."""
         events = list(self._events)
         self._events.clear()
