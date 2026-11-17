@@ -43,6 +43,7 @@ export const Meter: React.FC<MeterProps> = ({
         aria-valuenow={clamped}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-label={label ?? (valueLabel ? `${valueLabel} (${clamped}%)` : `Progress: ${clamped}%`)}
         className={cn('w-full bg-bg-grouped rounded-full overflow-hidden border border-hairline', height)}
       >
         <div

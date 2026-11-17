@@ -29,7 +29,12 @@ export const SplitWordStatement: React.FC = () => {
       </div>
 
       {/* Horizontal Caption Strip (scrollable on mobile, flex on desktop) */}
-      <div className="w-full overflow-x-auto no-scrollbar px-4 sm:px-6">
+      <div
+        className="w-full overflow-x-auto no-scrollbar px-4 sm:px-6"
+        tabIndex={0}
+        role="region"
+        aria-label="Workflow examples strip"
+      >
         <div className="flex gap-4 min-w-max pb-4 mx-auto max-w-6xl">
           {STRIP_CARDS.map((card, idx) => (
             <div

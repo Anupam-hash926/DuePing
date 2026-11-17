@@ -11,6 +11,7 @@ import { ListRow } from '../../ui/ListRow'
 import { EmptyState } from '../../ui/EmptyState'
 import { Skeleton } from '../../ui/Skeleton'
 import { formatMoney, formatDate } from '../../lib/format'
+import { invoiceStatusLabel, plural } from '../../lib/labels'
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -75,6 +76,16 @@ export const InvoicesPage: React.FC = () => {
     }
   }
 
+  const getRowAccent = (inv: { status: string; days_overdue: number }) => {
+    if (inv.status === 'DISPUTED') {
+      return 'border-l-2 border-l-warning'
+    }
+    if (inv.days_overdue > 0 && inv.status !== 'PAID') {
+      return 'border-l-2 border-l-danger'
+    }
+    return 'border-l-2 border-l-transparent'
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Title and + New Button */}
@@ -133,6 +144,7 @@ export const InvoicesPage: React.FC = () => {
           {/* Client Filter */}
           {clients && clients.length > 0 && (
             <select
+              aria-label="Filter invoices by client"
               value={clientFilter}
               onChange={(e) => setClientFilter(e.target.value)}
               className="bg-surface-solid border border-hairline rounded-full px-3 py-1.5 text-xs text-text-2 focus:outline-none focus:ring-2 focus:ring-tint ml-auto"
@@ -159,6 +171,7 @@ export const InvoicesPage: React.FC = () => {
           {filteredInvoices.map((inv) => (
             <ListRow
               key={inv.id}
+              className={getRowAccent(inv)}
               onClick={() => navigate(`/app/invoices/${inv.id}`)}
               title={
                 <div className="flex items-center gap-2">
@@ -180,13 +193,13 @@ export const InvoicesPage: React.FC = () => {
                   {inv.open_blocker_count > 0 && (
                     <span className="inline-flex items-center gap-1 text-fill-amber">
                       <AlertCircle className="w-3 h-3" />
-                      {inv.open_blocker_count} blocker
+                      {plural(inv.open_blocker_count, 'blocker')}
                     </span>
                   )}
                   {inv.pending_action_count > 0 && (
                     <span className="inline-flex items-center gap-1 text-text-3">
                       <Clock className="w-3 h-3" />
-                      {inv.pending_action_count} action
+                      {plural(inv.pending_action_count, 'action')}
                     </span>
                   )}
                 </div>
@@ -202,7 +215,7 @@ export const InvoicesPage: React.FC = () => {
                     </div>
                   </div>
                   <Badge variant={getStatusVariant(inv.status)} size="sm">
-                    {inv.status}
+                    {invoiceStatusLabel[inv.status] ?? inv.status}
                   </Badge>
                   <ChevronRight className="w-4 h-4 text-text-3" />
                 </div>

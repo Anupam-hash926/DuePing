@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
-import { Search, Calendar, FileText, Users, Play, RotateCcw, LayoutDashboard, Upload } from 'lucide-react'
+import { Search, Calendar, FileText, Users, Play, RotateCcw, LayoutDashboard, Upload, CreditCard } from 'lucide-react'
 import { useInvoices, useClients } from '../../api/hooks/useQueries'
 import { useRunDailyCheck, useResetDemo } from '../../api/hooks/useMutations'
 
@@ -101,15 +101,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
                 {invoices.slice(0, 5).map((inv) => (
                   <Command.Item
                     key={inv.id}
+                    value={`Open invoice ${inv.invoice_number} ${inv.client?.name ?? ''}`}
                     onSelect={() => handleSelect(() => navigate(`/app/invoices/${inv.id}`))}
                     className="flex items-center justify-between px-3 py-2 rounded-input text-text hover:bg-bg-grouped cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-text-3" />
-                      <span className="font-medium">{inv.invoice_number}</span>
+                      <span className="font-medium">Open invoice {inv.invoice_number}</span>
                       <span className="text-text-2">· {inv.client?.name}</span>
                     </div>
                     <span className="text-xs font-medium text-text-2">{inv.total.amount} {inv.total.currency}</span>
+                  </Command.Item>
+                ))}
+                {invoices.filter((inv) => inv.status !== 'PAID').slice(0, 3).map((inv) => (
+                  <Command.Item
+                    key={`pay-${inv.id}`}
+                    value={`Record payment on ${inv.invoice_number} ${inv.client?.name ?? ''}`}
+                    onSelect={() => handleSelect(() => navigate(`/app/invoices/${inv.id}?record_payment=1`))}
+                    className="flex items-center justify-between px-3 py-2 rounded-input text-text hover:bg-bg-grouped cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-success" />
+                      <span className="font-medium">Record payment on {inv.invoice_number}</span>
+                      <span className="text-text-2">· {inv.client?.name}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-tint">Record</span>
                   </Command.Item>
                 ))}
               </Command.Group>

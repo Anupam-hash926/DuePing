@@ -69,7 +69,7 @@ def create_app_facade() -> CollectionFacade:
     ReliabilityListener(client_repo).register(bus)
     NotificationListener(notification_repo, clock).register(bus)
 
-    action_center = ActionCenter(invoice_repo, client_repo, registry, clock)
+    action_center = ActionCenter(invoice_repo, client_repo, registry, clock, reminder_factory=reminder_factory)
     importer = InvoiceImporter(
         invoice_repo=invoice_repo,
         client_repo=client_repo,

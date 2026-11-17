@@ -314,6 +314,7 @@ class ActionCenterItemRead(BaseModel):
     days_overdue: int
     score: float
     reason: str
+    suggested_tone: str | None = None
 
 
 class StrategyInfoRead(BaseModel):

@@ -65,7 +65,7 @@ def env():
     playbook = ResolutionPlaybook()
     prio_reg = PrioritizationRegistry()
     reminder_factory = ReminderFactory()
-    action_center = ActionCenter(invoice_repo, client_repo, prio_reg, clock)
+    action_center = ActionCenter(invoice_repo, client_repo, prio_reg, clock, reminder_factory=reminder_factory)
     invoice_factory = InvoiceFactory(invoice_repo)
     importer = InvoiceImporter(invoice_repo, client_repo, project_repo, invoice_factory, bus)
     report_service = ReportService(invoice_repo, client_repo, settings_repo, clock)
@@ -195,7 +195,8 @@ class TestEventFlowAndListeners:
         pm_actions = [a for a in updated_inv.actions if a.source == ActionSource.PROMISE_MISSED]
         assert len(pm_actions) == 1
         assert pm_actions[0].priority == Priority.HIGH
-        assert "call Bluepeak Agency and send a FIRM reminder" in pm_actions[0].description
+        assert "Follow up with Bluepeak Agency" in pm_actions[0].description
+        assert "FIRM" not in pm_actions[0].description
 
         # Reliability listener reduced client score
         updated_client, _, _ = facade.get_client_summary(client.id)
@@ -225,7 +226,8 @@ class TestEventFlowAndListeners:
         updated_inv = facade.get_invoice(inv.id)
         ovd_actions = [a for a in updated_inv.actions if a.source == ActionSource.OVERDUE]
         assert len(ovd_actions) == 1
-        assert "is 1 days overdue" in ovd_actions[0].description
+        assert "Send a reminder to" in ovd_actions[0].description
+        assert "is 1 days overdue" not in ovd_actions[0].description
 
     def test_invoice_paid_cancels_all_pending_actions(self, env):
         facade = env["facade"]
@@ -463,3 +465,47 @@ class TestFacadeSystemSettings:
         overdue_actions2 = [a for a in inv2.actions if a.source.name == "OVERDUE" and a.status.name == "PENDING"]
         # Must still be exactly 1, not duplicated!
         assert len(overdue_actions2) == 1
+
+    def test_overdue_action_description_has_no_changing_numbers(self, env):
+        import re
+        facade = env["facade"]
+        clock = env["clock"]
+        client = facade.create_client(name="Stable Desc Ltd", email="stable@desc.com")
+        inv = facade.create_invoice(
+            client_id=client.id,
+            total=Money.of(5000),
+            issue_date=clock.today() - timedelta(days=35),
+            due_date=clock.today() - timedelta(days=12),
+        )
+        facade.send_invoice(inv.id)
+        facade.run_daily_check()
+
+        updated_inv = facade.get_invoice(inv.id)
+        ovd_actions = [a for a in updated_inv.actions if a.source == ActionSource.OVERDUE]
+        assert len(ovd_actions) == 1
+        desc = ovd_actions[0].description
+        assert "Send a reminder to" in desc
+        assert "days overdue" not in desc
+        assert not any(t in desc for t in ["POLITE", "FIRM", "FINAL"])
+        # Excluding static invoice number, no changing numbers/digits exist
+        desc_without_inv = desc.replace(updated_inv.invoice_number, "")
+        assert not re.search(r"\d", desc_without_inv)
+
+    def test_action_center_item_suggested_tone_matches_factory(self, env):
+        facade = env["facade"]
+        clock = env["clock"]
+        client = facade.create_client(name="Tone Test Client", email="tone@client.com")
+        inv = facade.create_invoice(
+            client_id=client.id,
+            total=Money.of(15000),
+            issue_date=clock.today() - timedelta(days=50),
+            due_date=clock.today() - timedelta(days=15),
+        )
+        facade.send_invoice(inv.id)
+        facade.run_daily_check()
+
+        view = facade.get_action_center()
+        matched = [item for item in view.items if item.invoice_id == inv.id]
+        assert len(matched) == 1
+        assert matched[0].suggested_tone is not None
+        assert matched[0].suggested_tone in ("POLITE", "FIRM", "FINAL")

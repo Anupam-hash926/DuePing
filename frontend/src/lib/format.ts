@@ -57,13 +57,13 @@ export function formatDate(dateStr?: string | null): string {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
-      })
+      }).replace(/\bSept\b/g, 'Sep')
     }
     return new Date(dateStr).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-    })
+    }).replace(/\bSept\b/g, 'Sep')
   } catch {
     return dateStr
   }
@@ -82,7 +82,7 @@ export function formatDateTime(dateTimeStr?: string | null): string {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    }).replace(/\bSept\b/g, 'Sep')
   } catch {
     return dateTimeStr
   }

@@ -257,6 +257,7 @@ def action_center_item_to_dto(item: ActionCenterItem) -> ActionCenterItemRead:
         days_overdue=item.days_overdue,
         score=item.score,
         reason=item.reason,
+        suggested_tone=item.suggested_tone,
     )
 
 

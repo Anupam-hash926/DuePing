@@ -124,10 +124,8 @@ class ActionGenerationListener:
         if invoice.status not in (InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.DISPUTED):
             return
         client = self.client_repo.get(event.client_id)
-        p_date_str = event.promised_date.strftime("%d %b") if event.promised_date else "scheduled date"
         desc = (
-            f"Promise for {p_date_str} was missed — call {client.name} and send a "
-            f"FIRM reminder for invoice {invoice.invoice_number}"
+            f"Follow up with {client.name} about missed promise for invoice {invoice.invoice_number}"
         )
         action = NextAction(
             description=desc,
@@ -150,7 +148,6 @@ class ActionGenerationListener:
             return
         client = self.client_repo.get(event.client_id)
         today = self.clock.today()
-        tone = self.reminder_factory.tone_for(invoice, today)
 
         if event.days_overdue <= 7:
             prio = Priority.MEDIUM
@@ -160,8 +157,7 @@ class ActionGenerationListener:
             prio = Priority.CRITICAL
 
         desc = (
-            f"Invoice {invoice.invoice_number} is {event.days_overdue} days overdue — "
-            f"send a {tone.name} reminder to {client.name}"
+            f"Send a reminder to {client.name} about overdue invoice {invoice.invoice_number}"
         )
         action = NextAction(
             description=desc,

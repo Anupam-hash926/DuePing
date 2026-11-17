@@ -93,7 +93,17 @@ export const FocusCard: React.FC<FocusCardProps> = ({
       : 'bg-tint'
 
   const showReminder = item.action.source === 'OVERDUE' || item.action.source === 'PROMISE_MISSED'
-  const reasonTokens = item.reason ? item.reason.split(' · ') : []
+
+  // Deduplicate chips: filter out facts already rendered as structured chips
+  const extraTokens = (item.reason ? item.reason.split(' · ') : [])
+    .map((t) => t.trim())
+    .filter((t) => {
+      const lower = t.toLowerCase()
+      if (lower.includes('priority')) return false
+      if (lower.includes('overdue')) return false
+      if (lower.includes('outstanding')) return false
+      return true
+    })
 
   return (
     <>
@@ -106,10 +116,9 @@ export const FocusCard: React.FC<FocusCardProps> = ({
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
         >
           <GlassCard className="rounded-[28px] p-6 sm:p-8 space-y-6">
-            {/* Header: Priority, Invoice #, Client Name, Counter */}
+            {/* Header: Invoice #, Client Name, Counter */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <span className={`w-2.5 h-2.5 rounded-full ${priorityColor}`} />
                 <TextButton
                   onClick={handleOpenInvoice}
                   className="text-base font-semibold text-tint hover:underline"
@@ -129,27 +138,43 @@ export const FocusCard: React.FC<FocusCardProps> = ({
               {item.action.description}
             </h2>
 
-            {/* Reason Tokens as subtle chips */}
-            {reasonTokens.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {reasonTokens.map((token, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-normal bg-bg-grouped border border-hairline text-text-2"
-                  >
-                    {token}
-                  </span>
-                ))}
-                {item.days_overdue > 0 && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fill-red/10 border border-fill-red/20 text-fill-red">
-                    {item.days_overdue}d overdue
-                  </span>
-                )}
-                <span className="text-xs text-text-3 ml-1">
-                  Outstanding: <strong className="font-medium text-text">{formatMoney(item.outstanding)}</strong>
+            {/* Structured Facts Strip: Priority -> Overdue -> Outstanding -> Reliability -> Suggested Tone */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {/* 1. Priority dot + label */}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-bg-grouped border border-hairline text-text">
+                <span className={`w-2 h-2 rounded-full ${priorityColor}`} />
+                <span>{item.action.priority.charAt(0) + item.action.priority.slice(1).toLowerCase()} priority</span>
+              </span>
+
+              {/* 2. Days overdue (live) */}
+              {item.days_overdue > 0 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fill-red/10 border border-fill-red/20 text-fill-red">
+                  {item.days_overdue} days overdue
                 </span>
-              </div>
-            )}
+              )}
+
+              {/* 3. Outstanding */}
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bg-grouped border border-hairline text-text">
+                Outstanding {formatMoney(item.outstanding)}
+              </span>
+
+              {/* 4. Client reliability & other unique facts from reason */}
+              {extraTokens.map((token, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-normal bg-bg-grouped border border-hairline text-text-2"
+                >
+                  {token}
+                </span>
+              ))}
+
+              {/* 5. Suggested tone */}
+              {item.suggested_tone && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-tint/10 border border-tint/20 text-tint">
+                  Suggested: {item.suggested_tone}
+                </span>
+              )}
+            </div>
 
             {/* Actions: Primary Done pill + secondary text buttons */}
             <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-hairline">

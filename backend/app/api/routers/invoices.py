@@ -325,6 +325,16 @@ def complete_action(
     return _present_invoice(facade, inv)
 
 
+@router.post("/invoices/{id}/actions/{aid}/reopen", response_model=InvoiceRead)
+def reopen_action(
+    id: str,
+    aid: str,
+    facade: CollectionFacade = Depends(get_facade),
+) -> InvoiceRead:
+    inv = facade.reopen_action(id, aid)
+    return _present_invoice(facade, inv)
+
+
 @router.post("/invoices/{id}/actions/{aid}/reschedule", response_model=InvoiceRead)
 def reschedule_action(
     id: str,

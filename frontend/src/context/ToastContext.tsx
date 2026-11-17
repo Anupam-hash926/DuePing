@@ -4,7 +4,9 @@ import { Toast as ToastBanner } from '../ui/Toast'
 export interface Toast {
   id: string
   type: 'success' | 'error' | 'info'
-  message: string
+  message?: string
+  title?: string
+  action?: { label: string; onClick: () => void }
 }
 
 interface ToastContextType {
@@ -12,6 +14,7 @@ interface ToastContextType {
   showSuccess: (message: string) => void
   showError: (message: string) => void
   showInfo: (message: string) => void
+  showCustom: (toast: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
 }
 
@@ -20,24 +23,25 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const addToast = useCallback((type: 'success' | 'error' | 'info', message: string) => {
+  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substring(2, 9)
-    setToasts((prev) => [...prev, { id, type, message }])
+    setToasts((prev) => [...prev, { ...toast, id }])
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 5000)
   }, [])
 
-  const showSuccess = useCallback((msg: string) => addToast('success', msg), [addToast])
-  const showError = useCallback((msg: string) => addToast('error', msg), [addToast])
-  const showInfo = useCallback((msg: string) => addToast('info', msg), [addToast])
+  const showSuccess = useCallback((msg: string) => addToast({ type: 'success', message: msg }), [addToast])
+  const showError = useCallback((msg: string) => addToast({ type: 'error', message: msg }), [addToast])
+  const showInfo = useCallback((msg: string) => addToast({ type: 'info', message: msg }), [addToast])
+  const showCustom = useCallback((t: Omit<Toast, 'id'>) => addToast(t), [addToast])
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
   return (
-    <ToastContext.Provider value={{ toasts, showSuccess, showError, showInfo, removeToast }}>
+    <ToastContext.Provider value={{ toasts, showSuccess, showError, showInfo, showCustom, removeToast }}>
       {children}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         {toasts.map((toast) => (
@@ -45,8 +49,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             <ToastBanner
               id={toast.id}
               type={toast.type}
-              title={toast.type === 'error' ? 'Error' : toast.type === 'success' ? 'Success' : 'Notice'}
+              title={toast.title ?? (toast.type === 'error' ? 'Error' : toast.type === 'success' ? 'Success' : 'Notice')}
               message={toast.message}
+              action={toast.action}
               onClose={() => removeToast(toast.id)}
             />
           </div>

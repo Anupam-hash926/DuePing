@@ -7,7 +7,8 @@ from collections.abc import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dueping.db")
+DEFAULT_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dueping.db"))
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
 # For SQLite, ensure connect_args allows multi-threaded access in FastAPI
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}

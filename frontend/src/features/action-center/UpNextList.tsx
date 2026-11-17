@@ -45,8 +45,15 @@ export const UpNextList: React.FC<UpNextListProps> = ({ items, onComplete, onSel
                 </span>
               }
               subtitle={
-                <span className="text-xs text-text-3">
-                  {item.client_name} · <Link to={`/app/invoices/${item.invoice_id}`} className="hover:underline text-tint" onClick={(e) => e.stopPropagation()}>{item.invoice_number}</Link>
+                <span className="text-xs text-text-3 flex items-center gap-1.5 flex-wrap">
+                  <span>{item.client_name}</span>
+                  <span>·</span>
+                  <Link to={`/app/invoices/${item.invoice_id}`} className="hover:underline text-tint" onClick={(e) => e.stopPropagation()}>{item.invoice_number}</Link>
+                  {item.suggested_tone && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-tint/10 text-tint border border-tint/20">
+                      Suggested: {item.suggested_tone}
+                    </span>
+                  )}
                 </span>
               }
               trailing={

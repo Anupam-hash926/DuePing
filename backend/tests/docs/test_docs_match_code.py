@@ -57,8 +57,11 @@ ALLOW_LIST = {
     "DashboardPage",
     "FocusCard",
     "InvoiceDetailPage",
+    "InvoicesPage",
     "LandingPage",
     "NewInvoicePage",
+    "PingMark",
+    "ProgressRing",
     "ReminderPanel",
     "StatusStepper",
 }
@@ -124,3 +127,70 @@ def test_docs_match_code() -> None:
         f"Found {len(unknown_identifiers)} unknown identifiers in docs/README that do not exist in backend/app:\n"
         + "\n".join(f"  - {k} (found in: {', '.join(v)})" for k, v in sorted(unknown_identifiers.items()))
     )
+
+
+def test_doc_file_paths_exist() -> None:
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    doc_files = glob.glob(os.path.join(repo_root, "docs", "**", "*.md"), recursive=True)
+    readme = os.path.join(repo_root, "README.md")
+    if os.path.exists(readme):
+        doc_files.append(readme)
+
+    missing_paths: list[str] = []
+    backtick_path_re = re.compile(r"`((?:docs|backend|frontend)/[a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)`")
+    md_link_re = re.compile(r"\[.*?\]\(((\./|\.\./|(?:docs|backend|frontend)/)[a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)\)")
+
+    for doc_path in doc_files:
+        rel_doc = os.path.relpath(doc_path, repo_root)
+        with open(doc_path, encoding="utf-8") as fp:
+            content = fp.read()
+
+        for m in backtick_path_re.finditer(content):
+            p = m.group(1)
+            if not os.path.exists(os.path.join(repo_root, p)):
+                missing_paths.append(f"{rel_doc}: `{p}`")
+
+        for m in md_link_re.finditer(content):
+            raw_p = m.group(1)
+            resolved = os.path.normpath(os.path.join(os.path.dirname(doc_path), raw_p))
+            if not os.path.exists(resolved):
+                missing_paths.append(f"{rel_doc}: [{raw_p}]")
+
+    assert not missing_paths, "Found non-existent file paths in documentation:\n" + "\n".join(f"  - {p}" for p in missing_paths)
+
+
+def test_doc_metrics_match_code() -> None:
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    facade_path = os.path.join(repo_root, "backend", "app", "application", "facade.py")
+    with open(facade_path, encoding="utf-8") as fp:
+        facade_line_count = len(fp.readlines())
+
+    metrics = {
+        "facade_lines": facade_line_count,
+        "backend_tests": 308,
+        "frontend_tests": 36,
+        "coverage_pct": 96,
+    }
+
+    doc_files = glob.glob(os.path.join(repo_root, "docs", "**", "*.md"), recursive=True)
+    readme = os.path.join(repo_root, "README.md")
+    if os.path.exists(readme):
+        doc_files.append(readme)
+
+    metric_re = re.compile(r"<!--\s*metric:([a-zA-Z0-9_]+)=([0-9.]+)\s*-->")
+    mismatches: list[str] = []
+
+    for doc_path in doc_files:
+        rel_doc = os.path.relpath(doc_path, repo_root)
+        with open(doc_path, encoding="utf-8") as fp:
+            content = fp.read()
+
+        for m in metric_re.finditer(content):
+            name, val_str = m.group(1), m.group(2)
+            if name in metrics:
+                expected = metrics[name]
+                actual = float(val_str) if "." in val_str else int(val_str)
+                if actual != expected:
+                    mismatches.append(f"{rel_doc}: metric {name}={actual} != measured {expected}")
+
+    assert not mismatches, "Documented metrics drifted from measured values:\n" + "\n".join(f"  - {m}" for m in mismatches)

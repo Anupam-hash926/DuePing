@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('DuePing End-to-End Demo Flow', () => {
+  test.beforeEach(async ({ request }) => {
+    // Reset database to clean canonical state before each run
+    try {
+      await request.post('http://localhost:8000/api/system/reset-demo')
+    } catch {
+      // ignore if server is starting
+    }
+  })
+
   test('Landing -> Open App -> Today -> Demo Date & Check -> Open Invoice -> Pay -> PAID', async ({ page }) => {
     // 1. Visit landing page
     await page.goto('/')
@@ -20,73 +29,49 @@ test.describe('DuePing End-to-End Demo Flow', () => {
 
     // 4. Open Demo Popover from navbar (Demo button)
     const demoBtn = page.getByRole('button', { name: 'Demo', exact: true }).first()
-    if (await demoBtn.isVisible()) {
-      await demoBtn.click()
+    await expect(demoBtn).toBeVisible()
+    await demoBtn.click()
 
-      // Set demo date forward by 4 days
-      const dateInput = page.locator('input[type="date"]').first()
-      if (await dateInput.isVisible()) {
-        await dateInput.fill('2026-11-20')
-        const setBtn = page.getByRole('button', { name: 'Set', exact: true })
-        if (await setBtn.isVisible()) {
-          await setBtn.click()
-        }
-      }
+    // Set demo date forward by 4 days to trigger overdue check
+    const dateInput = page.locator('input[type="date"]').first()
+    await expect(dateInput).toBeVisible()
+    await dateInput.fill('2026-11-20')
+    const setBtn = page.getByRole('button', { name: 'Set', exact: true })
+    await setBtn.click()
 
-      // Run Daily Check
-      const runCheckBtn = page.getByRole('button', { name: 'Run Daily Check' })
-      if (await runCheckBtn.isVisible()) {
-        await runCheckBtn.click()
-      }
+    // Run Daily Check
+    const runCheckBtn = page.getByRole('button', { name: 'Run Daily Check' })
+    await expect(runCheckBtn).toBeVisible()
+    await runCheckBtn.click()
 
-      // Close demo popover
-      await page.keyboard.press('Escape')
-    }
+    // Close demo popover
+    await page.keyboard.press('Escape')
 
     // 5. Navigate to Invoices
     await page.goto('/app/invoices')
     await expect(page.getByRole('heading', { name: 'Invoices', exact: true })).toBeVisible()
 
-    // If no invoices exist yet, create one
-    const firstInvoice = page.locator('text=/INV-/').first()
-    if (!(await firstInvoice.isVisible())) {
-      const newInvoiceBtn = page.getByRole('button', { name: /New Invoice/i })
-      if (await newInvoiceBtn.isVisible()) {
-        await newInvoiceBtn.click()
-        await expect(page).toHaveURL(/\/app\/invoices\/new/)
-
-        // If client selection is available, create invoice
-        const amountField = page.locator('input[placeholder="0.00"]')
-        if (await amountField.isVisible()) {
-          await amountField.fill('75000')
-          await page.getByRole('button', { name: /Create Invoice/i }).click()
-        }
-      }
-    } else {
-      await firstInvoice.click()
-    }
+    // Open first invoice matching INV-
+    const invoiceRow = page.locator('text=/INV-/').first()
+    await expect(invoiceRow).toBeVisible()
+    await invoiceRow.click()
 
     // 6. Verify invoice detail page loaded
-    if (page.url().includes('/app/invoices/')) {
-      // Record payment if allowed
-      const recordPaymentBtn = page.getByRole('button', { name: /Record Payment/i }).first()
-      if (await recordPaymentBtn.isVisible()) {
-        await recordPaymentBtn.click()
+    await expect(page).toHaveURL(/\/app\/invoices\/.+/)
+    await expect(page.getByRole('heading', { name: /INV-/ })).toBeVisible()
 
-        // Fill payment amount
-        const amountInput = page.locator('input[type="number"]')
-        if (await amountInput.isVisible()) {
-          await amountInput.fill('100000.00')
-          // Submit payment
-          const confirmBtn = page.getByRole('button', { name: /Confirm Payment/i })
-          if (await confirmBtn.isVisible()) {
-            await confirmBtn.click()
-          }
-        }
+    // 7. Record payment
+    const recordPaymentBtn = page.getByRole('button', { name: /Record Payment/i }).first()
+    if (await recordPaymentBtn.isVisible()) {
+      await recordPaymentBtn.click()
 
-        // Status or heading should be visible
-        await expect(page.getByRole('heading', { name: /INV-/ })).toBeVisible()
-      }
+      // Fill payment amount if needed and confirm
+      const confirmBtn = page.getByRole('button', { name: /Record Payment/i }).last()
+      await expect(confirmBtn).toBeVisible()
+      await confirmBtn.click()
+
+      // Verify status updates to PAID or PARTIALLY_PAID
+      await expect(page.getByText(/PAID|Partially Paid/i).first()).toBeVisible()
     }
   })
 })

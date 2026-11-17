@@ -4,10 +4,12 @@ import type { InvoiceRead, AuditEventRead, FollowUpRead } from '../../../api/typ
 import { GroupedList } from '../../../ui/GroupedList'
 import { ListRow } from '../../../ui/ListRow'
 import { Button } from '../../../ui/Button'
+import { TextButton } from '../../../ui/TextButton'
 import { Sheet } from '../../../ui/Sheet'
 import { Badge } from '../../../ui/Badge'
 import { formatDateTime } from '../../../lib/format'
 import { useLogFollowUp } from '../../../api/hooks/useMutations'
+import { labelForEventType, channelLabel, followUpOutcomeLabel, labelOrFallback } from '../../../lib/labels'
 
 export interface HistoryPanelProps {
   invoice: InvoiceRead
@@ -52,7 +54,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-text-3">
-            Communication History ({invoice.follow_ups.length})
+            Conversations ({invoice.follow_ups.length})
           </h3>
           {allowed.has('log_follow_up') && (
             <Button size="sm" variant="secondary" onClick={() => onFollowUpModalChange(true)}>
@@ -63,8 +65,13 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
         </div>
 
         {invoice.follow_ups.length === 0 ? (
-          <div className="p-6 text-center bg-surface-solid rounded-card border border-hairline text-text-3 text-xs">
-            No communication history logged.
+          <div className="p-6 text-center bg-surface-solid rounded-card border border-hairline text-text-3 text-xs flex flex-col items-center justify-center gap-2">
+            <span>No conversations logged yet.</span>
+            {allowed.has('log_follow_up') && (
+              <TextButton onClick={() => onFollowUpModalChange(true)} className="text-tint text-xs">
+                Log follow-up
+              </TextButton>
+            )}
           </div>
         ) : (
           <GroupedList>
@@ -74,8 +81,8 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 leading={<PhoneCall className="w-4 h-4 text-tint flex-shrink-0" />}
                 title={
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-text">{fu.channel}</span>
-                    <Badge variant="neutral" size="sm">{fu.outcome.replace('_', ' ')}</Badge>
+                    <span className="font-medium text-text">{labelOrFallback(channelLabel, fu.channel)}</span>
+                    <Badge variant="neutral" size="sm">{labelOrFallback(followUpOutcomeLabel, fu.outcome)}</Badge>
                   </div>
                 }
                 subtitle={<span className="text-text-2">{fu.notes ?? 'No notes recorded'}</span>}
@@ -86,10 +93,10 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
         )}
       </div>
 
-      {/* Domain Event Audit Trail */}
+      {/* Domain Event Audit Trail -> Activity */}
       <div className="space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-text-3">
-          Domain Event Audit Trail ({auditEvents.length})
+          Activity ({auditEvents.length})
         </h3>
 
         {auditEvents.length === 0 ? (
@@ -104,7 +111,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 leading={<Shield className="w-4 h-4 text-purple flex-shrink-0" />}
                 title={
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-text">{ev.event_type}</span>
+                    <span className="font-medium text-text">{labelForEventType(ev.event_type)}</span>
                   </div>
                 }
                 subtitle={<span className="text-text-2">{ev.description}</span>}

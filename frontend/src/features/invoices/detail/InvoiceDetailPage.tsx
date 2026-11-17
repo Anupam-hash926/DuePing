@@ -21,14 +21,14 @@ export const InvoiceDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') ?? 'timeline'
-  const initialTab = rawTab === 'overview' ? 'blockers' : rawTab === 'history' ? 'timeline' : rawTab
+  const currentTab = rawTab === 'overview' ? 'blockers' : rawTab === 'history' ? 'timeline' : rawTab
 
   const { data: invoice, isLoading, error } = useInvoice(id)
   const { data: auditEvents } = useAudit(id)
   const writeOff = useWriteOff(id ?? '')
 
   // Modals controlled across panels
-  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(() => searchParams.get('record_payment') === '1')
   const [blockerOpen, setBlockerOpen] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
   const [writeOffOpen, setWriteOffOpen] = useState(false)
@@ -36,6 +36,21 @@ export const InvoiceDetailPage: React.FC = () => {
 
   const handleTabChange = (val: string) => {
     setSearchParams({ tab: val }, { replace: true })
+  }
+
+  const handleOpenPayment = () => {
+    setSearchParams({ tab: 'payments' }, { replace: true })
+    setPaymentOpen(true)
+  }
+
+  const handleOpenBlocker = () => {
+    setSearchParams({ tab: 'blockers' }, { replace: true })
+    setBlockerOpen(true)
+  }
+
+  const handleOpenFollowUp = () => {
+    setSearchParams({ tab: 'timeline' }, { replace: true })
+    setFollowUpOpen(true)
   }
 
   const handleWriteOffSubmit = async (e: React.FormEvent) => {
@@ -85,18 +100,19 @@ export const InvoiceDetailPage: React.FC = () => {
       {/* Aggregate Header */}
       <InvoiceHeader
         invoice={invoice}
-        onOpenPayment={() => setPaymentOpen(true)}
-        onOpenBlocker={() => setBlockerOpen(true)}
-        onOpenFollowUp={() => setFollowUpOpen(true)}
+        onOpenPayment={handleOpenPayment}
+        onOpenBlocker={handleOpenBlocker}
+        onOpenFollowUp={handleOpenFollowUp}
         onOpenWriteOff={() => setWriteOffOpen(true)}
       />
 
       {/* Lifecycle Progression */}
-      <StatusStepper status={invoice.status} />
+      <StatusStepper status={invoice.status} amountPaid={invoice.amount_paid.amount} />
 
       {/* Structured Domain Tabs per Spec 10.4: Timeline · Blockers · Payments · Documents · Reminder */}
       <Tabs
-        defaultValue={initialTab}
+        defaultValue={currentTab}
+        value={currentTab}
         onValueChange={handleTabChange}
         tabs={[
           {

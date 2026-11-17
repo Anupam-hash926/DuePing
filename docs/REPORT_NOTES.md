@@ -119,7 +119,7 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
            )
    ```
    Add `self.strategies.append(BankDetailsUpdateResolution())` to `ResolutionPlaybook.__init__`.
-3. In `frontend/src/pages/InvoiceDetailPage.tsx`: add `<option value="BANK_DETAILS_UPDATE">Bank Details Update</option>`.
+3. In `frontend/src/features/invoices/detail/InvoiceDetailPage.tsx`: add `<option value="BANK_DETAILS_UPDATE">Bank Details Update</option>`.
 
 ### 6.2 Adding a New Prioritisation Strategy (`PromiseRiskStrategy`)
 1. In `backend/app/application/prioritization.py`:
@@ -249,12 +249,12 @@ Entities generate their UUID identifiers (`uuid.uuid4().hex`) inside their Pytho
 
 ### 10.2 Real Screenshot Catalog
 The following visual assets are captured in `docs/screenshots/` reflecting the Apple/iOS 7 aesthetic, squircle tiles, and Lando typography:
-1. `docs/screenshots/01-landing-hero.svg`: Full-height public landing hero with weight 200 typography and floating glass action card.
-2. `docs/screenshots/02-pinned-story.svg`: Interactive 4-beat story demonstrating root-cause blockers resolving into generated next actions.
-3. `docs/screenshots/03-today-action-center.svg`: Action Centre view with large title, simulated date, strategy segmented control, count-up stake summary, and top-ranked FocusCard.
-4. `docs/screenshots/04-overview-dashboard.svg`: Collection dashboard featuring 3 big numerals in weight 200 with count-ups, 5-bucket soft-gradient aging bar, and trend sparkline.
-5. `docs/screenshots/05-invoice-detail-blocker-action.svg`: Invoice detail view showing open blockers paired directly with generated next actions connected by a tint line.
-6. `docs/screenshots/06-reminder-bubble.svg`: Context-aware dynamic follow-up copy generator with tone switcher, chat bubble, and copy-to-clipboard.
-7. `docs/screenshots/07-import-result.svg`: Calm drop zone with dashed outline, processed/imported/rejected metric tiles, and row validation error list.
-8. `docs/screenshots/08-audit-log.svg`: Immutable event trail grouped by day with sticky headers and domain event icons.
-9. `docs/screenshots/09-dark-mode-today.svg`: True black `#000000` dark theme with elevated surfaces and Apple system accents.
+1. `docs/screenshots/01-landing-hero.png`: Full-height public landing hero with weight 200 typography and floating glass action card.
+2. `docs/screenshots/02-pinned-story.png`: Interactive 4-beat story demonstrating root-cause blockers resolving into generated next actions.
+3. `docs/screenshots/03-today-action-center.png`: Action Centre view with large title, simulated date, strategy segmented control, count-up stake summary, and top-ranked FocusCard.
+4. `docs/screenshots/04-overview-dashboard.png`: Collection dashboard featuring 3 big numerals in weight 200 with count-ups, 5-bucket soft-gradient aging bar, and trend sparkline.
+5. `docs/screenshots/05-invoice-detail-blocker-action.png`: Invoice detail view showing open blockers paired directly with generated next actions connected by a tint line.
+6. `docs/screenshots/06-reminder-bubble.png`: Context-aware dynamic follow-up copy generator with tone switcher, chat bubble, and copy-to-clipboard.
+7. `docs/screenshots/07-import-result.png`: Calm drop zone with dashed outline, processed/imported/rejected metric tiles, and row validation error list.
+8. `docs/screenshots/08-audit-log.png`: Immutable event trail grouped by day with sticky headers and domain event icons.
+9. `docs/screenshots/09-dark-mode-today.png`: True black `#000000` dark theme with elevated surfaces and Apple system accents.

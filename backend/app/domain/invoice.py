@@ -21,6 +21,7 @@ from app.domain.enums import (
 from app.domain.events import (
     ActionCompleted,
     ActionCreated,
+    ActionReopened,
     ActionRescheduled,
     ActionsCancelled,
     BlockerRaised,
@@ -474,6 +475,16 @@ class Invoice:
                 a.mark_completed(now)
                 self._record(ActionCompleted(occurred_at=now,
                                              action_id=action_id, **self._base()))
+                return
+        raise EntityNotFound(f"Action {action_id} not found")
+
+    def reopen_action(self, action_id: str, now: datetime) -> None:
+        """Reopen a completed action back to pending."""
+        for a in self._actions:
+            if a.id == action_id:
+                a.reopen()
+                self._record(ActionReopened(occurred_at=now,
+                                            action_id=action_id, **self._base()))
                 return
         raise EntityNotFound(f"Action {action_id} not found")
 

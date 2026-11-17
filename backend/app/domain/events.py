@@ -224,6 +224,16 @@ class ActionCompleted(DomainEvent):
 
 
 @dataclass
+class ActionReopened(DomainEvent):
+    """A completed next action has been reopened back to pending."""
+
+    action_id: str = ""
+
+    def describe(self) -> str:
+        return f"Invoice {self.invoice_number}: action {self.action_id} reopened"
+
+
+@dataclass
 class ActionRescheduled(DomainEvent):
     """A next action has been rescheduled to a new due date."""
 

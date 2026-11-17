@@ -21,6 +21,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
       <input
         ref={ref}
         type="search"
+        aria-label={props['aria-label'] ?? (typeof placeholder === 'string' ? placeholder : 'Search')}
         value={value}
         onChange={onChange}
         placeholder={placeholder}

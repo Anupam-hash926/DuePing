@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
-import { Calendar, Play, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Calendar, Play, RotateCcw, AlertTriangle, CheckCircle2, Sun, Moon, Monitor } from 'lucide-react'
 import { Popover } from '../../ui/Popover'
 import { Button } from '../../ui/Button'
+import { SegmentedControl } from '../../ui/SegmentedControl'
 import { useToday, useFailures } from '../../api/hooks/useQueries'
 import { useSetSimulatedDate, useRunDailyCheck, useResetDemo } from '../../api/hooks/useMutations'
+import { useTheme, type Theme } from '../../lib/useTheme'
 
 export const DemoPopover: React.FC = () => {
   const { data: todayData } = useToday()
@@ -11,6 +13,7 @@ export const DemoPopover: React.FC = () => {
   const setDate = useSetSimulatedDate()
   const dailyCheck = useRunDailyCheck()
   const resetDemo = useResetDemo()
+  const { theme, setTheme } = useTheme()
 
   const [dateInput, setDateInput] = useState('')
   const [confirmReset, setConfirmReset] = useState(false)
@@ -86,6 +89,7 @@ export const DemoPopover: React.FC = () => {
         <div className="flex items-center gap-2">
           <input
             type="date"
+            aria-label="Simulated date"
             value={dateInput}
             onChange={(e) => setDateInput(e.target.value)}
             className="flex-1 h-8 px-2.5 text-xs bg-bg-grouped border border-hairline rounded-input text-text outline-none focus:border-tint"
@@ -99,6 +103,23 @@ export const DemoPopover: React.FC = () => {
             Reset to real date
           </Button>
         )}
+      </div>
+
+      {/* Theme Override Controls */}
+      <div className="space-y-1.5 pt-2 border-t border-hairline">
+        <label className="text-xs text-text-2 font-medium">Appearance</label>
+        <SegmentedControl
+          size="sm"
+          name="theme-control"
+          ariaLabel="Theme override"
+          value={theme}
+          onChange={(t) => setTheme(t as Theme)}
+          options={[
+            { value: 'system', label: 'System', icon: <Monitor className="w-3 h-3" /> },
+            { value: 'light', label: 'Light', icon: <Sun className="w-3 h-3" /> },
+            { value: 'dark', label: 'Dark', icon: <Moon className="w-3 h-3" /> },
+          ]}
+        />
       </div>
 
       <div className="pt-2 border-t border-hairline space-y-2">

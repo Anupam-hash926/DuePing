@@ -6,8 +6,9 @@ from datetime import date, timedelta
 
 from app.application.ports import ClientRepository, Clock, InvoiceRepository
 from app.application.prioritization import ActionContext, PrioritizationRegistry
+from app.application.reminders import ReminderFactory
 from app.domain.client import Client
-from app.domain.enums import ActionStatus
+from app.domain.enums import ActionSource, ActionStatus
 from app.domain.money import Money
 from app.domain.next_action import NextAction
 
@@ -23,6 +24,7 @@ class ActionCenterItem:
     days_overdue: int
     score: float
     reason: str
+    suggested_tone: str | None = None  # "POLITE" | "FIRM" | "FINAL" | None
 
 
 @dataclass(frozen=True)
@@ -42,11 +44,13 @@ class ActionCenter:
         client_repo: ClientRepository,
         registry: PrioritizationRegistry,
         clock: Clock,
+        reminder_factory: ReminderFactory | None = None,
     ) -> None:
         self.invoice_repo = invoice_repo
         self.client_repo = client_repo
         self.registry = registry
         self.clock = clock
+        self.reminder_factory = reminder_factory
 
     def build(self, strategy_key: str | None = None) -> ActionCenterView:
         strat_key = strategy_key or self.registry.default_key
@@ -76,6 +80,9 @@ class ActionCenter:
                     continue
 
                 ctx = ActionContext(action=act, invoice=inv, client=client, today=today)
+                suggested_tone: str | None = None
+                if act.source in (ActionSource.OVERDUE, ActionSource.PROMISE_MISSED) and self.reminder_factory:
+                    suggested_tone = self.reminder_factory.tone_for(inv, today).value
 
                 if act.is_actionable(today):
                     score = strategy.score(ctx)
@@ -91,6 +98,7 @@ class ActionCenter:
                             days_overdue=days_ovd,
                             score=score,
                             reason=reason,
+                            suggested_tone=suggested_tone,
                         )
                     )
                 elif today < act.due_date <= upcoming_cutoff:
@@ -106,6 +114,7 @@ class ActionCenter:
                             days_overdue=days_ovd,
                             score=0.0,
                             reason=reason,
+                            suggested_tone=suggested_tone,
                         )
                     )
 

@@ -36,6 +36,11 @@ def run_daily_check(
     )
 
 
+@router.get("/system/health")
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @router.get("/system/today", response_model=SimulatedDateRead)
 def get_today(
     facade: CollectionFacade = Depends(get_facade),

@@ -6,7 +6,7 @@ import { LargeTitle } from '../../ui/LargeTitle'
 import { Button } from '../../ui/Button'
 import { GroupedList } from '../../ui/GroupedList'
 import { ListRow } from '../../ui/ListRow'
-import { Ring } from '../../ui/Ring'
+import { ProgressRing, getReliabilityColor } from '../../ui/ProgressRing'
 import { Badge } from '../../ui/Badge'
 import { Sheet } from '../../ui/Sheet'
 import { Skeleton } from '../../ui/Skeleton'
@@ -91,12 +91,7 @@ export const ClientsPage: React.FC = () => {
       ) : (
         <GroupedList>
           {clients?.map((client) => {
-            const scoreColor =
-              client.reliability_score >= 80
-                ? 'var(--fill-green)'
-                : client.reliability_score >= 50
-                ? 'var(--fill-amber)'
-                : 'var(--fill-red)'
+            const scoreColor = getReliabilityColor(client.reliability_score)
 
             const riskVariant =
               client.risk_level === 'HIGH'
@@ -111,9 +106,11 @@ export const ClientsPage: React.FC = () => {
                 onClick={() => handleRowClick(client.id)}
                 leading={
                   <div className="flex items-center justify-center">
-                    <Ring
+                    <ProgressRing
                       size="sm"
+                      value={client.reliability_score}
                       color={scoreColor}
+                      ariaLabel={`Reliability ${client.reliability_score} out of 100`}
                     />
                   </div>
                 }

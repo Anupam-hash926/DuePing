@@ -7,6 +7,7 @@ export interface ToastProps {
   type?: 'success' | 'error' | 'info'
   title: string
   message?: string
+  action?: { label: string; onClick: () => void }
   onClose?: () => void
   className?: string
 }
@@ -15,6 +16,7 @@ export const Toast: React.FC<ToastProps> = ({
   type = 'info',
   title,
   message,
+  action,
   onClose,
   className,
 }) => {
@@ -35,7 +37,21 @@ export const Toast: React.FC<ToastProps> = ({
     >
       <div className="mt-0.5">{icon}</div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-text">{title}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold text-text">{title}</div>
+          {action && (
+            <button
+              type="button"
+              onClick={() => {
+                action.onClick()
+                onClose?.()
+              }}
+              className="text-xs font-bold text-tint hover:underline focus-visible:outline-none"
+            >
+              {action.label}
+            </button>
+          )}
+        </div>
         {message && <div className="text-xs text-text-2 mt-0.5 leading-relaxed">{message}</div>}
       </div>
       {onClose && (

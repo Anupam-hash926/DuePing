@@ -6,6 +6,7 @@ from datetime import timedelta
 from app.domain.document import SupportingDocument
 from app.domain.enums import (
     ActionSource,
+    ActionStatus,
     BlockerType,
     Channel,
     DocumentType,
@@ -16,6 +17,7 @@ from app.domain.enums import (
 from app.domain.events import (
     ActionCompleted,
     ActionCreated,
+    ActionReopened,
     ActionRescheduled,
     ActionsCancelled,
     BlockerRaised,
@@ -238,6 +240,13 @@ def test_add_and_complete_action_emit_events():
     assert len(events) == 1
     assert isinstance(events[0], ActionCompleted)
     assert events[0].action_id == act.id
+
+    inv.reopen_action(act.id, NOW)
+    events = inv.pull_events()
+    assert len(events) == 1
+    assert isinstance(events[0], ActionReopened)
+    assert events[0].action_id == act.id
+    assert inv.actions[0].status == ActionStatus.PENDING
 
 
 def test_write_off_emits_invoice_written_off():

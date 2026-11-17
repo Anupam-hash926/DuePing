@@ -2,12 +2,13 @@ import React from 'react'
 import { useDashboard } from '../../api/hooks/useQueries'
 import { LargeTitle } from '../../ui/LargeTitle'
 import { Skeleton } from '../../ui/Skeleton'
-import { Ring } from '../../ui/Ring'
+import { ProgressRing } from '../../ui/ProgressRing'
 import { useCountUp } from '../../ui/Stat'
 import { AgingBar } from './AgingBar'
 import { TrendSpark } from './TrendSpark'
 import { DebtorsList } from './DebtorsList'
 import { formatMoney } from '../../lib/format'
+import { useDefaultCurrency } from '../../lib/useCurrency'
 
 const BigNumeral: React.FC<{
   label: string
@@ -15,7 +16,9 @@ const BigNumeral: React.FC<{
   currency?: string
   meta?: string
   variant?: 'default' | 'danger' | 'success'
-}> = ({ label, amount, currency = 'GBP', meta, variant = 'default' }) => {
+}> = ({ label, amount, currency, meta, variant = 'default' }) => {
+  const defaultCurrency = useDefaultCurrency()
+  const activeCurrency = currency || defaultCurrency
   const animated = useCountUp(amount)
 
   const colorClass =
@@ -25,13 +28,23 @@ const BigNumeral: React.FC<{
       ? 'text-fill-green'
       : 'text-text'
 
+  const formatted = formatMoney({ amount: animated.toFixed(2), currency: activeCurrency })
+  const parts = formatted.split('.')
+  const whole = parts[0]
+  const decimal = parts[1]
+
   return (
-    <div className="bg-surface-solid rounded-[28px] border border-hairline p-6 sm:p-8 space-y-2">
+    <div className="bg-surface-solid rounded-[28px] border border-hairline p-6 sm:p-8 space-y-2 [container-type:inline-size]">
       <div className="text-xs font-semibold uppercase tracking-wider text-text-3">
         {label}
       </div>
-      <div className={`text-4xl sm:text-6xl lg:text-7xl font-extralight tracking-tight ${colorClass}`}>
-        {formatMoney({ amount: animated.toFixed(2), currency })}
+      <div
+        data-testid="big-numeral"
+        className={`font-extralight tracking-tight whitespace-nowrap [font-variant-numeric:tabular-nums] ${colorClass}`}
+        style={{ fontSize: 'clamp(1.75rem, 8cqi, 4.25rem)' }}
+      >
+        <span>{whole}</span>
+        {decimal && <span className="text-[0.45em] opacity-75">.{decimal}</span>}
       </div>
       {meta && <div className="text-xs font-medium text-text-3">{meta}</div>}
     </div>
@@ -111,9 +124,12 @@ export const DashboardPage: React.FC = () => {
 
             {/* Promise Reliability Ring */}
             <div className="flex items-center gap-6">
-              <Ring
+              <ProgressRing
                 size="lg"
+                value={keepRate}
                 color={keepRate >= 80 ? 'var(--fill-green)' : keepRate >= 50 ? 'var(--fill-amber)' : 'var(--fill-red)'}
+                label={`${Math.round(keepRate)}%`}
+                ariaLabel={`Promise keep rate ${Math.round(keepRate)} percent`}
               />
               <div>
                 <div className="text-2xl font-light text-text">

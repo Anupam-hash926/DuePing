@@ -35,7 +35,7 @@ export const Tiles: React.FC = () => {
               </div>
               <Badge variant="danger" size="sm">Urgent</Badge>
             </div>
-            <div className="bg-surface-solid rounded-card border border-hairline p-4 shadow-sm flex items-center justify-between opacity-80">
+            <div className="bg-surface-solid rounded-card border border-hairline p-4 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-warning" />
                 <span className="text-xs font-medium text-text">Verify purchase order code</span>

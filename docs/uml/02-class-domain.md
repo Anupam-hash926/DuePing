@@ -267,6 +267,7 @@ classDiagram
         +remove_document(document_id)
         +add_action(description, priority, due_date, source, now, source_ref) NextAction
         +complete_action(action_id, now)
+        +reopen_action(action_id, now)
         +reschedule_action(action_id, new_date, today)
         +cancel_actions(source, source_ref)
         +mark_reminder_sent(tone, now, recipient_email)

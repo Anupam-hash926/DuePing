@@ -6,12 +6,13 @@ import { useUpdateClient } from '../../api/hooks/useMutations'
 import { Sheet } from '../../ui/Sheet'
 import { Button } from '../../ui/Button'
 import { Badge } from '../../ui/Badge'
-import { Ring } from '../../ui/Ring'
+import { ProgressRing, getReliabilityColor } from '../../ui/ProgressRing'
 import { GroupedList } from '../../ui/GroupedList'
 import { ListRow } from '../../ui/ListRow'
 import { Skeleton } from '../../ui/Skeleton'
 import { useToast } from '../../context/ToastContext'
 import { formatMoney, formatDate } from '../../lib/format'
+import { invoiceStatusLabel } from '../../lib/labels'
 
 interface ClientSheetProps {
   clientId: string | null
@@ -64,12 +65,7 @@ export const ClientSheet: React.FC<ClientSheetProps> = ({ clientId, open, onOpen
       ? 'warning'
       : 'success'
 
-  const scoreColor =
-    (client?.reliability_score ?? 100) >= 80
-      ? 'var(--fill-green)'
-      : (client?.reliability_score ?? 100) >= 50
-      ? 'var(--fill-amber)'
-      : 'var(--fill-red)'
+  const scoreColor = getReliabilityColor(client?.reliability_score ?? 100)
 
   return (
     <Sheet
@@ -88,9 +84,12 @@ export const ClientSheet: React.FC<ClientSheetProps> = ({ clientId, open, onOpen
           {/* Reliability & Risk Score Tile */}
           <div className="bg-bg-grouped rounded-2xl p-4 border border-hairline flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Ring
+              <ProgressRing
                 size="md"
+                value={client.reliability_score}
                 color={scoreColor}
+                label={client.reliability_score}
+                ariaLabel={`Reliability ${client.reliability_score} out of 100`}
               />
               <div>
                 <div className="text-sm font-semibold text-text">Reliability Score</div>
@@ -213,7 +212,7 @@ export const ClientSheet: React.FC<ClientSheetProps> = ({ clientId, open, onOpen
                     }
                     subtitle={
                       <span className="text-xs text-text-3">
-                        Due {formatDate(inv.due_date)} · {inv.status}
+                        Due {formatDate(inv.due_date)} · {invoiceStatusLabel[inv.status] ?? inv.status}
                       </span>
                     }
                     trailing={

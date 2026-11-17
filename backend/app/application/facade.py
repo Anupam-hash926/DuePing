@@ -82,8 +82,7 @@ class CollectionFacade:
     def find_invoice_by_number(self, number: str) -> Invoice | None: return self.invoice_repo.find_by_number(number)
     def count_invoices(self) -> int: return self.invoice_repo.count_all()
     def list_active_invoices(self) -> list[Invoice]: return self.invoice_repo.list_active()
-    def list_invoices(self, status: InvoiceStatus | None = None, client_id: str | None = None, overdue_only: bool = False, search: str | None = None, limit: int | None = None, offset: int = 0) -> list[Invoice]:
-        return self.invoice_commands.list_invoices(status, client_id, overdue_only, search, limit, offset, self.system_service.clock.today())
+    def list_invoices(self, status: InvoiceStatus | None = None, client_id: str | None = None, overdue_only: bool = False, search: str | None = None, limit: int | None = None, offset: int = 0) -> list[Invoice]: return self.invoice_commands.list_invoices(status, client_id, overdue_only, search, limit, offset, self.system_service.clock.today())
     def record_payment(self, invoice_id: str, amount: Money, payment_date: date, method: PaymentMethod, reference_number: str | None = None) -> Invoice:
         return self.invoice_commands.record_payment(invoice_id, amount, payment_date, method, reference_number)
     def raise_blocker(self, invoice_id: str, type: BlockerType, description: str, assigned_to: str | None = None) -> Invoice:
@@ -98,6 +97,7 @@ class CollectionFacade:
     def remove_document(self, invoice_id: str, document_id: str) -> Invoice: return self.invoice_commands.remove_document(invoice_id, document_id)
     def add_manual_action(self, invoice_id: str, description: str, priority: Priority, due_date: date) -> Invoice: return self.invoice_commands.add_manual_action(invoice_id, description, priority, due_date)
     def complete_action(self, invoice_id: str, action_id: str) -> Invoice: return self.invoice_commands.complete_action(invoice_id, action_id)
+    def reopen_action(self, invoice_id: str, action_id: str) -> Invoice: return self.invoice_commands.reopen_action(invoice_id, action_id)
     def reschedule_action(self, invoice_id: str, action_id: str, new_date: date) -> Invoice: return self.invoice_commands.reschedule_action(invoice_id, action_id, new_date)
     def write_off(self, invoice_id: str, reason: str) -> Invoice: return self.invoice_commands.write_off(invoice_id, reason)
 

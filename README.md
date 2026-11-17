@@ -85,8 +85,8 @@ cp .env.example .env
 # Seed the historical demo database (seeds 13 invoices and 5 clients)
 PYTHONPATH=. .venv/bin/python -m app.infrastructure.seed
 
-# Start the FastAPI backend server
-uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
+# Start the FastAPI backend server (with demo reset enabled)
+DUEPING_ENABLE_RESET=1 PYTHONPATH=. .venv/bin/uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 - API root: `http://localhost:8000`
 - Interactive OpenAPI / Swagger docs: `http://localhost:8000/docs`
@@ -102,23 +102,28 @@ npm install
 
 # Start Vite development server (proxies /api to http://localhost:8000)
 npm run dev
+
+# Run Playwright E2E & Accessibility Tests (auto-starts backend & frontend)
+npm run e2e
 ```
-- Access the web application at: `http://localhost:5173` (or `http://localhost:5174`)
+- Access the web application at: `http://localhost:5173`
 
 ---
 
 ## Running the Test Suite & Verification
 
-The project includes unit tests, forbidden-import boundary verifications, repository contract suites, full-flow API integration tests, and frontend component tests:
+The project includes domain unit tests, forbidden-import architectural boundary verifications, repository contract suites, full-flow API integration tests, and Playwright end-to-end / accessibility suites:
 
 ```bash
 # Using the Makefile
 make test  # runs both backend pytest with coverage and frontend vitest
 make lint  # runs ruff, mypy, tsc, and eslint
 
+# Playwright End-to-End & Axe A11y tests
+cd frontend && npm run e2e
+
 # Or directly in backend:
 cd backend
-source .venv/bin/activate
 PYTHONPATH=. .venv/bin/pytest tests/ --cov=app --cov-report=term-missing
 
 # And in frontend:
@@ -127,7 +132,7 @@ npm test -- --run
 npm run lint
 ```
 
-**Test Coverage Benchmark:** **304 backend tests passed** in ~1.4s with **96% line coverage**, plus **19 frontend unit tests passed**.
+**Test Coverage Benchmark:** **<!-- metric:backend_tests=308 -->308 backend tests passed** in ~1.4s with **<!-- metric:coverage_pct=96 -->96% line coverage** (0 skipped), **<!-- metric:frontend_tests=36 -->36 frontend unit tests passed**, and **13 Playwright E2E and Axe WCAG 2.1 AA accessibility tests passed**.
 
 ### Database Reset Note (Schema Hardening)
 The application database includes hardened schemas:
@@ -194,3 +199,12 @@ Follow this scripted 9-step demo directly in the browser UI at `http://localhost
 | **Phase 5** | API & Seed | 31 REST endpoints, error mapping (404/409/422), historical time-travel seed script, API flow tests | ✅ Complete |
 | **Phase 6** | Frontend | React 18, TypeScript, Tailwind CSS, Recharts dashboard, 6 interactive pages, zero `any` types | ✅ Complete |
 | **Phase 7** | Polish & Docs | Technical report notes ([`docs/REPORT_NOTES.md`](docs/REPORT_NOTES.md)), deviation tracking ([`docs/DEVIATIONS.md`](docs/DEVIATIONS.md)), README | ✅ Complete |
+| **Phase 11**| Hardening & Polish | Stale-free actions, dynamic currencies, WCAG 2.1 AA a11y, 12 Playwright E2E tests, theme switcher, zero skipped tests | ✅ Complete |
+
+---
+
+## Known Limitations
+
+1. **Single-User Architecture:** Designed for single-tenant small business / finance operations without multi-tenant RBAC or authentication tokens.
+2. **Synchronous In-Process Event Pipeline:** The thread-safe `EventBus` dispatches events synchronously to registered listeners with eventual consistency and bounded in-memory failure logging (`GET /api/system/failures`), rather than through an external distributed queue (such as Celery or RabbitMQ).
+3. **SQLite Concurrency Model:** Uses SQLite in WAL mode with connection-level foreign keys enabled (`PRAGMA foreign_keys=ON`) and optimistic concurrency locking (`version` column). While suitable for demonstration and small operational teams, enterprise multi-writer scale would migrate to PostgreSQL using the existing SQLAlchemy ORM mapping.

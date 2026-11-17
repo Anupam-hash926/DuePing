@@ -99,6 +99,19 @@ classDiagram
     PrioritizationStrategy <|-- OldestFirstStrategy
     PrioritizationStrategy <|-- RiskWeightedStrategy
     PrioritizationRegistry o-- PrioritizationStrategy
+
+    class ActionCenterItem {
+        +NextAction action
+        +str invoice_id
+        +str invoice_number
+        +str client_id
+        +str client_name
+        +Money outstanding
+        +int days_overdue
+        +str reason
+        +float score
+        +str suggested_tone
+    }
 ```
 
 ---
@@ -361,7 +374,7 @@ classDiagram
 
 ### 7. Facade Pattern
 
-Unifies application operations behind a cohesive, single-point entry for API routers and external clients, delegating to 4 focused command and system services plus query handlers (keeping the Facade <= 150 lines with 8 constructor dependencies).
+Unifies application operations behind a cohesive, single-point entry for API routers and external clients, delegating to 4 focused command and system services plus query handlers (keeping the Facade <= <!-- metric:facade_lines=135 -->135 lines with 8 constructor dependencies).
 
 ```mermaid
 classDiagram

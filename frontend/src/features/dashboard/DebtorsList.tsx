@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { DebtorRowRead } from '../../api/types'
 import { GroupedList } from '../../ui/GroupedList'
 import { ListRow } from '../../ui/ListRow'
-import { Ring } from '../../ui/Ring'
+import { ProgressRing } from '../../ui/ProgressRing'
 import { formatMoney } from '../../lib/format'
 
 interface DebtorsListProps {
@@ -24,9 +24,11 @@ export const DebtorsList: React.FC<DebtorsListProps> = ({ debtors }) => {
             key={debtor.client_id}
             leading={
               <div className="flex items-center justify-center">
-                <Ring
+                <ProgressRing
                   size="sm"
+                  value={100}
                   color="var(--tint)"
+                  ariaLabel={`Debtor ${debtor.name}`}
                 />
               </div>
             }

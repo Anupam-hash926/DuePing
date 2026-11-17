@@ -7,6 +7,7 @@ import { Button } from '../../../ui/Button'
 import { Sheet } from '../../../ui/Sheet'
 import { Badge } from '../../../ui/Badge'
 import { formatDate } from '../../../lib/format'
+import { blockerTypeLabel } from '../../../lib/labels'
 import { useRaiseBlocker, useResolveBlocker } from '../../../api/hooks/useMutations'
 
 export interface BlockersPanelProps {
@@ -73,7 +74,9 @@ export const BlockersPanel: React.FC<BlockersPanelProps> = ({
 
       {invoice.blockers.length === 0 ? (
         <div className="p-8 text-center bg-surface-solid rounded-card border border-hairline text-text-3 text-xs">
-          No blockers active. Invoice is proceeding normally.
+          {invoice.is_overdue
+            ? 'No blockers recorded. Raise one to get a recommended next step.'
+            : 'No blockers. Nothing is holding this invoice back.'}
         </div>
       ) : (
         <div className="space-y-3">
@@ -97,7 +100,7 @@ export const BlockersPanel: React.FC<BlockersPanelProps> = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-text">{b.description}</span>
                         <Badge variant={b.status !== 'RESOLVED' ? 'warning' : 'neutral'} size="sm">
-                          {b.type.replace('_', ' ')}
+                          {blockerTypeLabel[b.type] ?? b.type.replace('_', ' ')}
                         </Badge>
                       </div>
                     }

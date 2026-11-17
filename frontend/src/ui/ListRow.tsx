@@ -21,14 +21,14 @@ export const ListRow: React.FC<ListRowProps> = ({
   interactive = !!onClick,
   withChevron = false,
   className,
+  role,
   ...props
 }) => {
   const isClickable = interactive || !!onClick
 
   return (
     <div
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
+      role={role}
       onClick={onClick}
       onKeyDown={
         isClickable
@@ -42,7 +42,7 @@ export const ListRow: React.FC<ListRowProps> = ({
       }
       className={cn(
         'flex items-center justify-between px-4 py-3 min-h-[48px] gap-3 text-sm transition-colors select-none',
-        isClickable && 'cursor-pointer hover:bg-bg-grouped/60 active:bg-bg-grouped focus-visible:outline-none',
+        isClickable && 'cursor-pointer hover:bg-bg-grouped/60 active:bg-bg-grouped',
         className
       )}
       {...props}

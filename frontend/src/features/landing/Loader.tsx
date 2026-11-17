@@ -10,6 +10,12 @@ export interface LoaderProps {
 export const Loader: React.FC<LoaderProps> = ({ onComplete }) => {
   const [visible, setVisible] = useState(true)
 
+  const handleSkip = () => {
+    sessionStorage.setItem('dueping_loader_seen', '1')
+    setVisible(false)
+    onComplete()
+  }
+
   useEffect(() => {
     if (isReducedMotion() || sessionStorage.getItem('dueping_loader_seen')) {
       setVisible(false)
@@ -18,12 +24,20 @@ export const Loader: React.FC<LoaderProps> = ({ onComplete }) => {
     }
 
     const timer = setTimeout(() => {
-      sessionStorage.setItem('dueping_loader_seen', '1')
-      setVisible(false)
-      setTimeout(onComplete, 400)
+      handleSkip()
     }, 900)
 
-    return () => clearTimeout(timer)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        handleSkip()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [onComplete])
 
   return (
@@ -33,7 +47,11 @@ export const Loader: React.FC<LoaderProps> = ({ onComplete }) => {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 0.61, 0.36, 1] }}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg select-none"
+          onClick={handleSkip}
+          aria-label="Skip splash animation"
+          role="button"
+          tabIndex={0}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg select-none cursor-pointer"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}

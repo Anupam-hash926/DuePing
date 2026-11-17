@@ -4,9 +4,12 @@ import { cn } from '../lib/cn'
 import { springPresets } from '../lib/motion'
 
 export interface SegmentedOption<T extends string = string> {
-  value: T
+  value?: T
+  id?: T // alias for value
   label: React.ReactNode
   icon?: React.ReactNode
+  title?: string
+  ariaLabel?: string
 }
 
 export interface SegmentedControlProps<T extends string = string> {
@@ -15,6 +18,7 @@ export interface SegmentedControlProps<T extends string = string> {
   options: SegmentedOption<T>[]
   className?: string
   name?: string
+  ariaLabel?: string
   size?: 'sm' | 'md'
 }
 
@@ -24,9 +28,12 @@ export function SegmentedControl<T extends string = string>({
   options,
   className,
   name = 'segmented-control',
+  ariaLabel,
   size = 'md',
 }: SegmentedControlProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const getOptionVal = (opt: SegmentedOption<T>): T => (opt.value ?? opt.id) as T
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     let nextIndex = -1
@@ -42,7 +49,7 @@ export function SegmentedControl<T extends string = string>({
 
     if (nextIndex !== -1) {
       e.preventDefault()
-      onChange(options[nextIndex].value)
+      onChange(getOptionVal(options[nextIndex]))
       const buttons = containerRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
       buttons?.[nextIndex]?.focus()
     }
@@ -57,26 +64,29 @@ export function SegmentedControl<T extends string = string>({
     <div
       ref={containerRef}
       role="tablist"
-      aria-label={name}
+      aria-label={ariaLabel ?? name}
       className={cn(
-        'relative inline-flex items-center bg-bg-grouped rounded-pill border border-hairline select-none',
+        'relative inline-grid grid-flow-col auto-cols-fr items-center bg-bg-grouped rounded-pill border border-hairline select-none',
         sizeClasses,
         className
       )}
     >
       {options.map((option, index) => {
-        const isSelected = option.value === value
+        const optionVal = getOptionVal(option)
+        const isSelected = optionVal === value
         return (
           <button
-            key={option.value}
+            key={String(optionVal)}
             role="tab"
             type="button"
+            title={option.title ?? (typeof option.label === 'string' ? option.label : undefined)}
+            aria-label={option.ariaLabel ?? (typeof option.label === 'string' ? option.label : undefined)}
             aria-selected={isSelected}
             tabIndex={isSelected ? 0 : -1}
-            onClick={() => onChange(option.value)}
+            onClick={() => onChange(optionVal)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             className={cn(
-              'relative z-10 inline-flex items-center justify-center font-medium px-3.5 py-1 rounded-pill transition-colors focus-visible:outline-none gap-1.5',
+              'relative z-10 inline-flex items-center justify-center font-medium px-4 py-1 rounded-pill transition-colors focus-visible:outline-none gap-1.5 whitespace-nowrap text-center min-w-0 overflow-hidden',
               isSelected ? 'text-text' : 'text-text-2 hover:text-text'
             )}
           >

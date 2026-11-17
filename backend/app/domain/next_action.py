@@ -63,6 +63,15 @@ class NextAction:
         self.status = ActionStatus.COMPLETED
         self.completed_at = now
 
+    def reopen(self) -> None:
+        """Reopen a completed action back to PENDING status."""
+        if self.status != ActionStatus.COMPLETED:
+            raise InvalidStateTransition(
+                f"Cannot reopen action in {self.status.name} status; must be COMPLETED"
+            )
+        self.status = ActionStatus.PENDING
+        self.completed_at = None
+
     def reschedule(self, new_date: date, today: date) -> None:
         """Reschedule to new_date; must be >= today."""
         if self.status != ActionStatus.PENDING:

@@ -64,7 +64,7 @@
   - Represent an operational task assigned to the collections team.
   - Track action description, priority, deadline, and communication channel.
   - Track task state (`PENDING`, `COMPLETED`, `CANCELLED`).
-  - Support completion, rescheduling, and cancellation.
+  - Support completion, reopening back to pending, rescheduling, and cancellation.
 - **Collaborators:**
   - `Invoice`, `Priority`, `Channel`, `ActionSource`, `ActionStatus`.
 
@@ -148,3 +148,13 @@
   - Sort actions according to strategy algorithm and package into an `ActionCenterView` (due today vs. upcoming).
 - **Collaborators:**
   - `InvoiceRepository`, `ClientRepository`, `Clock`, `PrioritizationRegistry`, `PrioritizationStrategy`, `ActionCenterItem`, `ActionCenterView`.
+
+---
+
+### 11. `ActionCenterItem` (Value Carrier DTO)
+- **Package:** `app.application.action_center`
+- **Responsibilities:**
+  - Aggregate an actionable task (`NextAction`) with parent invoice metadata, client context, live days overdue, outstanding balance, priority, ranking score, and dynamic `suggested_tone`.
+  - Calculate `suggested_tone` dynamically via `ReminderFactory` (`POLITE`, `FIRM`, `FINAL`) without baking stale day counts into stored action text.
+- **Collaborators:**
+  - `NextAction`, `Invoice`, `Client`, `ReminderFactory`.

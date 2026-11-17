@@ -18,6 +18,7 @@ import { ListRow } from '../../ui/ListRow'
 import { EmptyState } from '../../ui/EmptyState'
 import { Skeleton } from '../../ui/Skeleton'
 import { formatDate } from '../../lib/format'
+import { labelForEventType } from '../../lib/labels'
 import type { AuditEventRead } from '../../api/types'
 
 const getEventIcon = (eventType: string) => {
@@ -74,7 +75,7 @@ export const AuditPage: React.FC = () => {
     <div className="space-y-6">
       <LargeTitle
         title="Audit Log"
-        subtitle="Complete immutable trail of all domain events, transactions, and lifecycle state transitions."
+        subtitle="Complete, immutable record of all activity, transactions, and invoice state changes."
       />
 
       <SearchField
@@ -121,8 +122,8 @@ export const AuditPage: React.FC = () => {
                       }
                       subtitle={
                         <div className="flex items-center gap-2 text-xs text-text-3">
-                          <span className="font-mono text-[11px] text-text-2">
-                            {ev.event_type}
+                          <span className="font-medium text-[11px] text-text-2">
+                            {labelForEventType(ev.event_type)}
                           </span>
                           {ev.invoice_id && (
                             <>

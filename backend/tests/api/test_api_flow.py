@@ -78,7 +78,7 @@ def test_full_api_flow(client: TestClient):
 
     # 3. Send invoice
     res = client.post(f"/api/invoices/{inv_id}/send")
-    assert res.status_code == 200, res.text
+    assert res.status_code == 200
     inv_data = res.json()
     assert inv_data["status"] == "SENT"
     assert "record_payment" in inv_data["allowed_operations"]
@@ -92,7 +92,7 @@ def test_full_api_flow(client: TestClient):
             "assigned_to": "Finance Team",
         },
     )
-    assert res.status_code == 200, res.text
+    assert res.status_code == 200
     inv_data = res.json()
     assert len(inv_data["blockers"]) == 1
     assert inv_data["blockers"][0]["type"] == "MISSING_PO"
@@ -104,7 +104,7 @@ def test_full_api_flow(client: TestClient):
 
     # Verify Action Center reflects the action (either due or upcoming)
     res = client.get("/api/action-center")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     ac_data = res.json()
     assert len(ac_data["items"]) + len(ac_data["upcoming"]) >= 1
 
@@ -117,25 +117,25 @@ def test_full_api_flow(client: TestClient):
             "note": "Promised to pay once PO is attached",
         },
     )
-    assert res.status_code == 200, res.text
+    assert res.status_code == 200
     inv_data = res.json()
     assert len(inv_data["promises"]) == 1
     assert inv_data["promises"][0]["status"] == "PENDING"
 
     # 6. Advance simulated date past the promised date & run daily check
     res = client.put("/api/system/today", json={"date": "2026-11-22"})
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert res.json()["simulated"] is True
     assert res.json()["today"] == "2026-11-22"
 
     res = client.post("/api/system/daily-check")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     check_summary = res.json()
     assert check_summary["promises_missed"] >= 1
 
     # Verify invoice promise status is MISSED and new action created
     res = client.get(f"/api/invoices/{inv_id}")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     inv_data = res.json()
     assert inv_data["promises"][0]["status"] == "MISSED"
     # Action for missed promise
@@ -143,20 +143,20 @@ def test_full_api_flow(client: TestClient):
 
     # Verify client reliability score dropped
     res = client.get(f"/api/clients/{client_id}")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     client_summary = res.json()
     assert client_summary["reliability_score"] < 100.0
     assert client_summary["promises_broken_count"] == 1
 
     # Verify notification exists
     res = client.get("/api/notifications")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     notifs = res.json()
     assert any("missed" in n["message"].lower() or "promise" in n["message"].lower() for n in notifs)
 
     # 7. Check reminder rendering contains blocker and promise details
     res = client.get(f"/api/invoices/{inv_id}/reminder")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     reminder_data = res.json()
     body_text = reminder_data["body"]
     assert "INV-FLOW-001" in body_text or "50,000" in body_text
@@ -166,7 +166,7 @@ def test_full_api_flow(client: TestClient):
         f"/api/invoices/{inv_id}/reminder/sent",
         json={"tone": reminder_data["tone"], "channel": "EMAIL"},
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     inv_data = res.json()
     assert inv_data["reminder_level"] >= 1
 
@@ -180,7 +180,7 @@ def test_full_api_flow(client: TestClient):
             "reference_number": "TXN-FLOW-999",
         },
     )
-    assert res.status_code == 200, res.text
+    assert res.status_code == 200
     inv_data = res.json()
     assert inv_data["status"] == "PAID"
     assert inv_data["outstanding"]["amount"] == "0.00"
@@ -190,14 +190,14 @@ def test_full_api_flow(client: TestClient):
 
     # Verify Dashboard totals updated
     res = client.get("/api/reports/dashboard")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     dash_data = res.json()
     assert dash_data["total_outstanding"]["amount"] == "0.00"
     assert dash_data["status_counts"]["PAID"] == 1
 
     # Verify audit log contains full event sequence
     res = client.get(f"/api/audit-log?invoice_id={inv_id}")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     audit_events = res.json()
     assert len(audit_events) >= 5
     event_types = [e["event_type"] for e in audit_events]
@@ -318,7 +318,7 @@ def test_error_mapping_422_pydantic_validation_error(client: TestClient):
 def test_reset_demo_data_endpoint(client: TestClient):
     """POST /api/system/reset-demo drops and seeds all 13 invoices and 5 clients."""
     res = client.post("/api/system/reset-demo")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert res.json()["ok"] is True
 
     # Check clients
@@ -401,7 +401,7 @@ def test_invoice_update_draft_only(client: TestClient):
         f"/api/invoices/{inv['id']}",
         json={"total_amount": "7500.00", "due_date": "2026-11-15"},
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert res.json()["total"]["amount"] == "7500.00"
     assert res.json()["due_date"] == "2026-11-15"
 
@@ -436,7 +436,7 @@ def test_dispute_and_resolve_flow(client: TestClient):
         f"/api/invoices/{inv['id']}/blockers",
         json={"type": "DISPUTED_AMOUNT", "description": "Billing dispute"},
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     inv_data = res.json()
     assert inv_data["status"] == "DISPUTED"
     bid = inv_data["blockers"][0]["id"]
@@ -446,12 +446,12 @@ def test_dispute_and_resolve_flow(client: TestClient):
         f"/api/invoices/{inv['id']}/payments",
         json={"amount": "2000.00", "payment_date": "2026-11-05", "method": "BANK_TRANSFER"},
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert res.json()["status"] == "DISPUTED"
 
     # Resolve dispute -> returns to PARTIALLY_PAID
     res = client.post(f"/api/invoices/{inv['id']}/blockers/{bid}/resolve")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert res.json()["status"] == "PARTIALLY_PAID"
 
 
@@ -477,7 +477,7 @@ def test_document_metadata_api(client: TestClient):
             "file_path": "/uploads/PO_12345.pdf",
         },
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     inv_data = res.json()
     assert len(inv_data["documents"]) == 1
     doc_id = inv_data["documents"][0]["id"]
@@ -485,7 +485,7 @@ def test_document_metadata_api(client: TestClient):
 
     # Remove document
     res = client.delete(f"/api/invoices/{inv['id']}/documents/{doc_id}")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert len(res.json()["documents"]) == 0
 
 
@@ -502,10 +502,14 @@ def test_manual_actions_api(client: TestClient):
         },
     ).json()
 
+    from datetime import date, timedelta
+    target_due = (date.today() + timedelta(days=3)).isoformat()
+    resched_due = (date.today() + timedelta(days=7)).isoformat()
+
     # Add action
     res = client.post(
         f"/api/invoices/{inv['id']}/actions",
-        json={"description": "Call accounts department", "priority": "HIGH", "due_date": "2026-11-12"},
+        json={"description": "Call accounts department", "priority": "HIGH", "due_date": target_due},
     )
     assert res.status_code == 200
     inv_data = res.json()
@@ -517,16 +521,21 @@ def test_manual_actions_api(client: TestClient):
     # Reschedule action
     res = client.post(
         f"/api/invoices/{inv['id']}/actions/{aid}/reschedule",
-        json={"new_date": "2026-11-15"},
+        json={"new_date": resched_due},
     )
     assert res.status_code == 200
     inv_data = res.json()
-    assert inv_data["actions"][0]["due_date"] == "2026-11-15"
+    assert inv_data["actions"][0]["due_date"] == resched_due
 
     # Complete action
     res = client.post(f"/api/invoices/{inv['id']}/actions/{aid}/complete")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     assert res.json()["actions"][0]["status"] == "COMPLETED"
+
+    # Step 5: Reopen action back to PENDING (undo)
+    res = client.post(f"/api/invoices/{inv['id']}/actions/{aid}/reopen")
+    assert res.status_code == 200, res.json()
+    assert res.json()["actions"][0]["status"] == "PENDING"
 
 
 def test_csv_import_api(client: TestClient):
@@ -540,7 +549,7 @@ def test_csv_import_api(client: TestClient):
         "/api/import/invoices",
         json={"format": "csv", "content": csv_content},
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     data = res.json()
     assert data["processed"] == 2
     assert data["imported"] == 1
@@ -552,13 +561,13 @@ def test_csv_import_api(client: TestClient):
 def test_settings_api(client: TestClient):
     """GET and PUT /api/system/settings update configuration."""
     res = client.get("/api/system/settings")
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
 
     res = client.put(
         "/api/system/settings",
         json={"sender_name": "Sarah", "default_currency": "USD"},
     )
-    assert res.status_code == 200
+    assert res.status_code == 200, res.json()
     data = res.json()
     assert data["sender_name"] == "Sarah"
     assert data["default_currency"] == "USD"

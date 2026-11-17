@@ -88,6 +88,19 @@ def repo_bundle(request):
         }
 
 
+@pytest.fixture
+def sqlite_session_factory():
+    """Isolated SQLite in-memory session factory with foreign keys enabled."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
+    from app.infrastructure.db import enable_sqlite_foreign_keys
+    enable_sqlite_foreign_keys(engine)
+    Base.metadata.create_all(bind=engine)
+    return sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
 # ── Client Repository Contract ────────────────────────────────────────────────
 
 class TestClientRepositoryContract:
@@ -500,14 +513,16 @@ class TestAuxiliaryRepositoriesContract:
         # Must return 6 (1 + max(5)) despite only 2 total invoices
         assert repo.next_invoice_sequence(2026) == 6
 
-    def test_sqlite_foreign_key_missing_invoice_raises_integrity_error(self, repo_bundle):
-        if repo_bundle["backend"] != "sqlite":
-            pytest.skip("SQLite specific foreign key test")
+
+# ── SQLite Specific Constraints ───────────────────────────────────────────────
+
+class TestSqliteSpecificConstraints:
+    def test_sqlite_foreign_key_missing_invoice_raises_integrity_error(self, sqlite_session_factory):
         from sqlalchemy.exc import IntegrityError
 
         from app.infrastructure.orm_models import PaymentModel
-        session_factory = repo_bundle["session_factory"]
-        with session_factory() as session:
+
+        with sqlite_session_factory() as session:
             bad_payment = PaymentModel(
                 id="bad-pay-1",
                 invoice_id="non-existent-inv",
@@ -520,14 +535,12 @@ class TestAuxiliaryRepositoriesContract:
             with pytest.raises(IntegrityError):
                 session.commit()
 
-    def test_sqlite_cascade_delete(self, repo_bundle):
-        if repo_bundle["backend"] != "sqlite":
-            pytest.skip("SQLite specific cascade test")
+    def test_sqlite_cascade_delete(self, sqlite_session_factory):
         from sqlalchemy import delete, select
 
         from app.infrastructure.orm_models import ClientModel, InvoiceModel, PaymentModel
-        session_factory = repo_bundle["session_factory"]
-        with session_factory() as session:
+
+        with sqlite_session_factory() as session:
             client = ClientModel(id="c_fk", name="FK Client", email="fk@test.com", created_at=NOW)
             session.add(client)
             inv = InvoiceModel(

@@ -45,7 +45,12 @@ export const Tabs: React.FC<TabsProps> = ({
       </TabsPrimitive.List>
 
       {tabs.map((tab) => (
-        <TabsPrimitive.Content key={tab.value} value={tab.value} className="outline-none">
+        <TabsPrimitive.Content
+          key={tab.value}
+          value={tab.value}
+          forceMount
+          className="outline-none data-[state=inactive]:hidden"
+        >
           {tab.content}
         </TabsPrimitive.Content>
       ))}

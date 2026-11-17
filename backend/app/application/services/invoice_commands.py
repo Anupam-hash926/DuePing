@@ -191,6 +191,13 @@ class InvoiceCommands:
             lambda inv: inv.complete_action(action_id, now),
         )
 
+    def reopen_action(self, invoice_id: str, action_id: str) -> Invoice:
+        now = self.clock.now()
+        return mutate_invoice(
+            self.invoice_repo, self.event_bus, invoice_id,
+            lambda inv: inv.reopen_action(action_id, now),
+        )
+
     def reschedule_action(self, invoice_id: str, action_id: str, new_date: date) -> Invoice:
         today, now = self.clock.today(), self.clock.now()
         return mutate_invoice(

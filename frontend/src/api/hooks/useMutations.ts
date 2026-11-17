@@ -100,6 +100,15 @@ export function useCompleteAnyAction() {
   })
 }
 
+export function useReopenAnyAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, actionId }: { invoiceId: string; actionId: string }) =>
+      apiClient.post<InvoiceRead>(`/invoices/${invoiceId}/actions/${actionId}/reopen`),
+    onSuccess: (_, vars) => invalidateInvoiceDependencies(qc, vars.invoiceId),
+  })
+}
+
 export function useRescheduleAction(invoiceId: string, actionId: string) {
   const qc = useQueryClient()
   return useMutation({

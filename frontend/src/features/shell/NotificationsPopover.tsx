@@ -1,7 +1,6 @@
 import React from 'react'
 import { Bell, Check } from 'lucide-react'
 import { Popover } from '../../ui/Popover'
-import { IconButton } from '../../ui/IconButton'
 import { Button } from '../../ui/Button'
 import { useNotifications } from '../../api/hooks/useQueries'
 import { apiClient } from '../../api/client'
@@ -23,17 +22,19 @@ export const NotificationsPopover: React.FC = () => {
   return (
     <Popover
       trigger={
-        <div className="relative inline-flex">
-          <IconButton aria-label="Notifications" variant="ghost" size="sm">
-            <Bell className="w-4 h-4 text-text-2" />
-          </IconButton>
+        <button
+          type="button"
+          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+          className="relative inline-flex items-center justify-center p-2 rounded-pill hover:bg-bg-grouped transition-colors"
+        >
+          <Bell className="w-4 h-4 text-text-2" />
           {unreadCount > 0 && (
             <span
+              aria-hidden="true"
               className="absolute top-1 right-1 w-2 h-2 rounded-full bg-tint ring-2 ring-surface-solid"
-              aria-label={`${unreadCount} unread notifications`}
             />
           )}
-        </div>
+        </button>
       }
       align="end"
       className="w-80 p-0 overflow-hidden"

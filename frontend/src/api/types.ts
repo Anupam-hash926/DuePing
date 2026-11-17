@@ -269,6 +269,7 @@ export interface ActionCenterItemRead {
   days_overdue: number
   score: number
   reason: string
+  suggested_tone?: 'POLITE' | 'FIRM' | 'FINAL' | null
 }
 
 export interface StrategyInfoRead {

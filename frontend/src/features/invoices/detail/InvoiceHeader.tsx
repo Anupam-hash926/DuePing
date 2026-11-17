@@ -5,8 +5,9 @@ import type { InvoiceRead } from '../../../api/types'
 import { Badge } from '../../../ui/Badge'
 import { Button } from '../../../ui/Button'
 import { MoneyText } from '../../../ui/MoneyText'
-import { Ring } from '../../../ui/Ring'
+import { PingMark } from '../../../ui/PingMark'
 import { formatDate } from '../../../lib/format'
+import { invoiceStatusLabel, plural } from '../../../lib/labels'
 import { useSendInvoice } from '../../../api/hooks/useMutations'
 
 export interface InvoiceHeaderProps {
@@ -47,12 +48,12 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
             {invoice.invoice_number}
           </h1>
           <Badge variant={getStatusVariant(invoice.status)} dot>
-            {invoice.status.replace('_', ' ')}
+            {invoiceStatusLabel[invoice.status] ?? invoice.status.replace('_', ' ')}
           </Badge>
           {invoice.is_overdue && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill bg-danger/10 border border-danger/20 text-danger text-xs font-medium">
-              <Ring size="sm" pulse={false} color="#FF3B30" />
-              <span>Overdue ({invoice.days_overdue}d)</span>
+              <PingMark size="sm" pulse={false} color="#FF3B30" />
+              <span>{plural(invoice.days_overdue, 'day')} overdue</span>
             </div>
           )}
         </div>

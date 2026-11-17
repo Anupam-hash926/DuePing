@@ -7,10 +7,12 @@ import { LargeTitle } from '../../ui/LargeTitle'
 import { Button } from '../../ui/Button'
 import { useToast } from '../../context/ToastContext'
 import { AddClientSheet } from './AddClientSheet'
+import { useDefaultCurrency } from '../../lib/useCurrency'
 
 export const NewInvoicePage: React.FC = () => {
   const navigate = useNavigate()
   const { showSuccess, showError } = useToast()
+  const currency = useDefaultCurrency()
 
   const { data: clients, isLoading: clientsLoading } = useClients()
   const createInvoiceMutation = useCreateInvoice()
@@ -26,6 +28,11 @@ export const NewInvoicePage: React.FC = () => {
     return d.toISOString().split('T')[0]
   })
   const [addClientOpen, setAddClientOpen] = useState(false)
+
+  const parsedAmount = parseFloat(totalAmount)
+  const isAmountValid = !isNaN(parsedAmount) && parsedAmount > 0
+  const isDateOrderValid = !issueDate || !dueDate || dueDate >= issueDate
+  const isFormValid = Boolean(clientId) && isAmountValid && Boolean(issueDate) && Boolean(dueDate) && isDateOrderValid
 
   useEffect(() => {
     if (clients && clients.length > 0 && !clientId) {
@@ -116,7 +123,7 @@ export const NewInvoicePage: React.FC = () => {
           {/* Amount */}
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">
-              Total Amount (GBP) *
+              Total amount ({currency}) *
             </label>
             <input
               type="number"
@@ -153,8 +160,15 @@ export const NewInvoicePage: React.FC = () => {
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-bg-grouped border border-hairline rounded-lg px-3 py-2.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-tint"
+                className={`w-full bg-bg-grouped border rounded-lg px-3 py-2.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-tint ${
+                  !isDateOrderValid ? 'border-fill-red focus:ring-fill-red' : 'border-hairline'
+                }`}
               />
+              {!isDateOrderValid && (
+                <p className="text-xs text-fill-red mt-1.5">
+                  Due date cannot be before issue date
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -171,6 +185,7 @@ export const NewInvoicePage: React.FC = () => {
           <Button
             variant="primary"
             type="submit"
+            disabled={!isFormValid || createInvoiceMutation.isPending}
             loading={createInvoiceMutation.isPending}
             className="rounded-full px-6"
           >
