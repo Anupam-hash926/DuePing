@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { Sparkles, Copy, Check, Send } from 'lucide-react'
-import type { InvoiceRead, ReminderRead } from '../../../api/types'
+import type { Channel, InvoiceRead, ReminderRead, ReminderTone } from '../../../api/types'
 import { Button } from '../../../ui/Button'
 import { SegmentedControl } from '../../../ui/SegmentedControl'
 import { ChatBubble } from '../../../ui/ChatBubble'
 import { GlassCard } from '../../../ui/GlassCard'
 import { useGenerateReminder, useMarkReminderSent } from '../../../api/hooks/useMutations'
+import { channelLabel, labelOrFallback, reminderToneLabel } from '../../../lib/labels'
 
 export interface ReminderPanelProps {
   invoice: InvoiceRead
@@ -16,8 +17,8 @@ export const ReminderPanel: React.FC<ReminderPanelProps> = ({
   invoice,
   initialReminder,
 }) => {
-  const [tone, setTone] = useState<string>(initialReminder?.tone ?? 'POLITE')
-  const [channel, setChannel] = useState<string>('EMAIL')
+  const [tone, setTone] = useState<ReminderTone>(initialReminder?.tone ?? 'POLITE')
+  const [channel, setChannel] = useState<Channel>('EMAIL')
   const [reminder, setReminder] = useState<ReminderRead | null>(initialReminder ?? null)
   const [copied, setCopied] = useState(false)
 
@@ -61,7 +62,7 @@ export const ReminderPanel: React.FC<ReminderPanelProps> = ({
             size="sm"
             name="reminder-tone"
             value={tone}
-            onChange={setTone}
+            onChange={(value) => setTone(value as ReminderTone)}
             options={[
               { value: 'POLITE', label: 'Polite' },
               { value: 'FIRM', label: 'Firm' },
@@ -71,12 +72,14 @@ export const ReminderPanel: React.FC<ReminderPanelProps> = ({
 
           <select
             value={channel}
-            onChange={(e) => setChannel(e.target.value)}
+            onChange={(e) => setChannel(e.target.value as Channel)}
             className="h-8 px-2.5 text-xs bg-bg-grouped border border-hairline rounded-pill text-text outline-none focus:border-tint"
           >
-            <option value="EMAIL">Email</option>
-            <option value="SMS">SMS</option>
-            <option value="WHATSAPP">WhatsApp</option>
+            <option value="EMAIL">{labelOrFallback(channelLabel, 'EMAIL')}</option>
+            <option value="PHONE">{labelOrFallback(channelLabel, 'PHONE')}</option>
+            <option value="WHATSAPP">{labelOrFallback(channelLabel, 'WHATSAPP')}</option>
+            <option value="MEETING">{labelOrFallback(channelLabel, 'MEETING')}</option>
+            <option value="OTHER">{labelOrFallback(channelLabel, 'OTHER')}</option>
           </select>
 
           <Button
@@ -95,7 +98,7 @@ export const ReminderPanel: React.FC<ReminderPanelProps> = ({
         <GlassCard className="space-y-4">
           <div className="flex items-center justify-between border-b border-hairline pb-3">
             <div className="text-xs">
-              <span className="font-semibold text-text">{reminder.tone} Tone</span>
+              <span className="font-semibold text-text">{labelOrFallback(reminderToneLabel, reminder.tone)} Tone</span>
               <span className="text-text-3"> · Subject: {reminder.subject}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -120,7 +123,7 @@ export const ReminderPanel: React.FC<ReminderPanelProps> = ({
             <ChatBubble
               sender="me"
               senderName={invoice.client?.name ? `To: ${invoice.client.name}` : 'Reminder'}
-              toneBadge={reminder.tone}
+              toneBadge={labelOrFallback(reminderToneLabel, reminder.tone)}
               message={reminder.body}
             />
           </div>

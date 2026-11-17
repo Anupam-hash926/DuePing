@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
+const apiBaseURL = process.env.DUEPING_API_URL
+  ?? `http://127.0.0.1:${process.env.DUEPING_E2E_API_PORT ?? '8000'}`
+
 test.describe('Accessibility Audits (Axe WCAG 2.1 AA)', () => {
   test.beforeEach(async ({ request }) => {
-    try {
-      await request.post('http://localhost:8000/api/system/reset-demo')
-    } catch {
-      // ignore
-    }
+    const response = await request.post(`${apiBaseURL}/api/system/reset-demo`)
+    expect(response.ok(), 'Demo database reset must succeed').toBe(true)
   })
 
   const routes = [

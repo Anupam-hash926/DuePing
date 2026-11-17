@@ -47,6 +47,7 @@ class DebtorRow:
     client_id: str
     name: str
     outstanding: Money
+    reliability_score: int | None
 
 
 @dataclass(frozen=True)
@@ -153,12 +154,19 @@ class ReportService:
             else:
                 debtor_totals[cid] = debtor_totals[cid].add(inv.outstanding())
 
-        client_map = {c.id: c.name for c in clients}
+        client_map = {c.id: c for c in clients}
         debtor_rows: list[DebtorRow] = []
         for cid, amt in debtor_totals.items():
             if amt.is_positive():
-                cname = client_map.get(cid, "Unknown")
-                debtor_rows.append(DebtorRow(client_id=cid, name=cname, outstanding=amt))
+                client = client_map.get(cid)
+                debtor_rows.append(
+                    DebtorRow(
+                        client_id=cid,
+                        name=client.name if client else "Unknown",
+                        outstanding=amt,
+                        reliability_score=client.reliability_score() if client else None,
+                    )
+                )
         debtor_rows.sort(key=lambda d: d.outstanding.amount, reverse=True)
         top_debtors = debtor_rows[:5]
 

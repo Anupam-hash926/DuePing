@@ -8,7 +8,7 @@ import { Sheet } from '../../../ui/Sheet'
 import { Badge } from '../../../ui/Badge'
 import { MoneyText } from '../../../ui/MoneyText'
 import { formatDate } from '../../../lib/format'
-import { promiseStatusLabel } from '../../../lib/labels'
+import { labelOrFallback, promiseStatusLabel } from '../../../lib/labels'
 import { useRecordPromise } from '../../../api/hooks/useMutations'
 
 export interface PromisesTimelineProps {
@@ -78,7 +78,7 @@ export const PromisesTimeline: React.FC<PromisesTimelineProps> = ({ invoice }) =
                     </span>
                   )}
                   <Badge variant={getStatusVariant(p.status)} size="sm" dot>
-                    {promiseStatusLabel[p.status] ?? p.status}
+                    {labelOrFallback(promiseStatusLabel, p.status)}
                   </Badge>
                 </div>
               }

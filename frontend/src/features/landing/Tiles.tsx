@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { TextButton } from '../../ui/TextButton'
 import { Badge } from '../../ui/Badge'
-import { Ring } from '../../ui/Ring'
+import { PingMark } from '../../ui/PingMark'
 import { Meter } from '../../ui/Meter'
 import { CheckCircle2, Upload } from 'lucide-react'
 
@@ -89,7 +89,7 @@ export const Tiles: React.FC = () => {
           </div>
 
           <div className="mt-8 bg-surface-solid rounded-card border border-hairline p-5 shadow-sm flex items-center gap-6">
-            <Ring size="lg" color="#34C759" pulse={false} />
+            <PingMark size="lg" color="#34C759" pulse={false} />
             <div className="flex-1 space-y-1">
               <Meter value={88} label="Average Payer Reliability" valueLabel="88%" variant="success" />
               <div className="text-[11px] text-text-3">14 promises kept · 2 missed</div>

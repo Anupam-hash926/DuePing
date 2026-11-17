@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
   Button, TextButton, IconButton, Badge, SegmentedControl, GroupedList, ListRow,
-  GlassCard, Sheet, Popover, Tabs, Stat, Ring, Meter, Stepper, Skeleton,
+  GlassCard, Sheet, Popover, Tabs, Stat, PingMark, Meter, Stepper, Skeleton,
   Toast, EmptyState, LargeTitle, SearchField, MoneyText, ChatBubble,
 } from '../ui'
 import { Sun, Moon, Bell, MessageSquare, Shield } from 'lucide-react'
@@ -153,7 +153,7 @@ export const DevUIPage: React.FC = () => {
             </GlassCard>
             <GlassCard>
               <div className="flex items-center gap-4">
-                <Ring size="lg" color="#007AFF" />
+                <PingMark size="lg" color="#007AFF" />
                 <div className="flex-1">
                   <Meter value={75} label="Target" valueLabel="75%" variant="gradient" />
                 </div>

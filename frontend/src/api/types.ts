@@ -13,6 +13,33 @@ export interface SuccessResponse {
   ok: boolean
 }
 
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' | 'DISPUTED' | 'WRITTEN_OFF'
+export type BlockerType =
+  | 'MISSING_PO'
+  | 'AWAITING_APPROVAL'
+  | 'DISPUTED_AMOUNT'
+  | 'WRONG_DETAILS'
+  | 'MISSING_DOCUMENTS'
+  | 'NO_RESPONSE'
+  | 'OTHER'
+export type BlockerStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+export type PromiseStatus = 'PENDING' | 'KEPT' | 'MISSED' | 'SUPERSEDED'
+export type ActionStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
+export type ActionSource = 'BLOCKER' | 'PROMISE_MISSED' | 'OVERDUE' | 'MANUAL'
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+export type Channel = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'MEETING' | 'OTHER'
+export type FollowUpOutcome =
+  | 'NO_RESPONSE'
+  | 'ACKNOWLEDGED'
+  | 'PROMISED_PAYMENT'
+  | 'DISPUTED'
+  | 'PAID'
+  | 'OTHER'
+export type PaymentMethod = 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'CASH' | 'CHEQUE' | 'OTHER'
+export type DocumentType = 'PURCHASE_ORDER' | 'INVOICE_COPY' | 'APPROVAL_EVIDENCE' | 'CONTRACT' | 'OTHER'
+export type ReminderTone = 'POLITE' | 'FIRM' | 'FINAL'
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
+
 // ---------------------------------------------------------------------------
 // Clients & Projects
 // ---------------------------------------------------------------------------
@@ -22,7 +49,7 @@ export interface ClientSnippet {
   name: string
   company_name?: string | null
   reliability_score: number
-  risk_level: 'LOW' | 'MEDIUM' | 'HIGH'
+  risk_level: RiskLevel
 }
 
 export interface ClientRead {
@@ -32,7 +59,7 @@ export interface ClientRead {
   phone?: string | null
   company_name?: string | null
   reliability_score: number
-  risk_level: 'LOW' | 'MEDIUM' | 'HIGH'
+  risk_level: RiskLevel
   promises_kept_count: number
   promises_broken_count: number
   created_at: string
@@ -86,7 +113,7 @@ export interface PaymentRead {
   id: string
   amount: MoneyDTO
   payment_date: string
-  method: string
+  method: PaymentMethod
   reference_number?: string | null
   recorded_at: string
 }
@@ -94,29 +121,29 @@ export interface PaymentRead {
 export interface PaymentCreate {
   amount: string
   payment_date: string
-  method: string
+  method: PaymentMethod
   reference_number?: string | null
 }
 
 export interface BlockerRead {
   id: string
-  type: string
+  type: BlockerType
   description?: string | null
   assigned_to?: string | null
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+  status: BlockerStatus
   created_at: string
   resolved_at?: string | null
 }
 
 export interface BlockerCreate {
-  type: string
+  type: BlockerType
   description?: string | null
   assigned_to?: string | null
 }
 
 export interface BlockerPatch {
   assigned_to?: string | null
-  status?: string | null
+  status?: BlockerStatus | null
 }
 
 export interface PromiseRead {
@@ -124,7 +151,7 @@ export interface PromiseRead {
   promised_date: string
   amount?: MoneyDTO | null
   note?: string | null
-  status: 'PENDING' | 'KEPT' | 'MISSED' | 'SUPERSEDED'
+  status: PromiseStatus
   created_at: string
 }
 
@@ -137,17 +164,17 @@ export interface PromiseCreate {
 export interface FollowUpRead {
   id: string
   contact_date: string
-  channel: string
+  channel: Channel
   notes: string
-  outcome: string
+  outcome: FollowUpOutcome
   promised_date?: string | null
   promised_amount?: MoneyDTO | null
 }
 
 export interface FollowUpCreate {
-  channel: string
+  channel: Channel
   notes: string
-  outcome: string
+  outcome: FollowUpOutcome
   contact_date?: string | null
   promised_date?: string | null
   promised_amount?: string | null
@@ -155,7 +182,7 @@ export interface FollowUpCreate {
 
 export interface DocumentRead {
   id: string
-  document_type: string
+  document_type: DocumentType
   file_name: string
   file_type: string
   file_path: string
@@ -163,7 +190,7 @@ export interface DocumentRead {
 }
 
 export interface DocumentCreate {
-  document_type: string
+  document_type: DocumentType
   file_name: string
   file_path: string
 }
@@ -172,16 +199,16 @@ export interface NextActionRead {
   id: string
   invoice_id?: string | null
   description: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  priority: Priority
   due_date: string
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED'
-  source: string
+  status: ActionStatus
+  source: ActionSource
   completed_at?: string | null
 }
 
 export interface NextActionCreate {
   description: string
-  priority: string
+  priority: Priority
   due_date: string
 }
 
@@ -203,7 +230,7 @@ export interface InvoiceSummaryRead {
   total: MoneyDTO
   amount_paid: MoneyDTO
   outstanding: MoneyDTO
-  status: 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'DISPUTED' | 'PAID' | 'WRITTEN_OFF'
+  status: InvoiceStatus
   is_overdue: boolean
   days_overdue: number
   reminder_level: number
@@ -245,14 +272,14 @@ export interface InvoiceWriteOff {
 // ---------------------------------------------------------------------------
 
 export interface ReminderRead {
-  tone: string
+  tone: ReminderTone
   subject: string
   body: string
 }
 
 export interface ReminderSentCreate {
-  tone: string
-  channel: string
+  tone: ReminderTone
+  channel: Channel
 }
 
 // ---------------------------------------------------------------------------
@@ -269,7 +296,7 @@ export interface ActionCenterItemRead {
   days_overdue: number
   score: number
   reason: string
-  suggested_tone?: 'POLITE' | 'FIRM' | 'FINAL' | null
+  suggested_tone?: ReminderTone | null
 }
 
 export interface StrategyInfoRead {
@@ -328,6 +355,7 @@ export interface DebtorRowRead {
   client_id: string
   name: string
   outstanding: MoneyDTO
+  reliability_score: number | null
 }
 
 export interface CollectionReportRead {

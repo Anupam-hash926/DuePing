@@ -303,6 +303,7 @@ def report_to_dto(report: CollectionReport) -> CollectionReportRead:
                 client_id=d.client_id,
                 name=d.name,
                 outstanding=money_to_dto(d.outstanding),
+                reliability_score=d.reliability_score,
             )
             for d in report.top_debtors
         ],

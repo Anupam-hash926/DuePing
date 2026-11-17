@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button'
 import { TextButton } from '../../ui/TextButton'
 import { Sheet } from '../../ui/Sheet'
 import { formatMoney } from '../../lib/format'
+import { labelOrFallback, priorityLabel } from '../../lib/labels'
 
 interface FocusCardProps {
   item: ActionCenterItemRead
@@ -143,7 +144,7 @@ export const FocusCard: React.FC<FocusCardProps> = ({
               {/* 1. Priority dot + label */}
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-bg-grouped border border-hairline text-text">
                 <span className={`w-2 h-2 rounded-full ${priorityColor}`} />
-                <span>{item.action.priority.charAt(0) + item.action.priority.slice(1).toLowerCase()} priority</span>
+                <span>{labelOrFallback(priorityLabel, item.action.priority)} priority</span>
               </span>
 
               {/* 2. Days overdue (live) */}

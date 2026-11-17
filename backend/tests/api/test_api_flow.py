@@ -340,6 +340,8 @@ def test_reset_demo_data_endpoint(client: TestClient):
     assert dash["active_count"] > 0
     assert dash["broken_promises"] >= 2
     assert dash["kept_promises"] >= 1
+    assert dash["top_debtors"]
+    assert all(0 <= debtor["reliability_score"] <= 100 for debtor in dash["top_debtors"])
 
 
 def test_reset_demo_disabled_returns_404(monkeypatch):

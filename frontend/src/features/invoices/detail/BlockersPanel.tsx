@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { AlertOctagon, CheckCircle2, Plus, CornerDownRight } from 'lucide-react'
-import type { InvoiceRead, BlockerRead, NextActionRead } from '../../../api/types'
+import type { InvoiceRead, BlockerRead, BlockerType, NextActionRead } from '../../../api/types'
 import { GroupedList } from '../../../ui/GroupedList'
 import { ListRow } from '../../../ui/ListRow'
 import { Button } from '../../../ui/Button'
 import { Sheet } from '../../../ui/Sheet'
 import { Badge } from '../../../ui/Badge'
 import { formatDate } from '../../../lib/format'
-import { blockerTypeLabel } from '../../../lib/labels'
+import { blockerTypeLabel, labelOrFallback } from '../../../lib/labels'
 import { useRaiseBlocker, useResolveBlocker } from '../../../api/hooks/useMutations'
 
 export interface BlockersPanelProps {
@@ -25,7 +25,7 @@ export const BlockersPanel: React.FC<BlockersPanelProps> = ({
   const allowed = new Set(invoice.allowed_operations)
 
   // Raise Form State
-  const [type, setType] = useState('MISSING_PO')
+  const [type, setType] = useState<BlockerType>('MISSING_PO')
   const [description, setDescription] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
 
@@ -100,7 +100,7 @@ export const BlockersPanel: React.FC<BlockersPanelProps> = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-text">{b.description}</span>
                         <Badge variant={b.status !== 'RESOLVED' ? 'warning' : 'neutral'} size="sm">
-                          {blockerTypeLabel[b.type] ?? b.type.replace('_', ' ')}
+                          {labelOrFallback(blockerTypeLabel, b.type)}
                         </Badge>
                       </div>
                     }
@@ -157,7 +157,7 @@ export const BlockersPanel: React.FC<BlockersPanelProps> = ({
             <label className="text-xs font-medium text-text-2 block mb-1">Blocker Type</label>
             <select
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => setType(e.target.value as BlockerType)}
               className="w-full h-10 px-3 bg-bg-grouped border border-hairline rounded-input text-text text-sm outline-none focus:border-tint"
             >
               <option value="MISSING_PO">Missing Purchase Order (PO)</option>

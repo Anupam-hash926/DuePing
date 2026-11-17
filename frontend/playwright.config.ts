@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const apiPort = process.env.DUEPING_E2E_API_PORT ?? '8000'
+const webPort = process.env.DUEPING_E2E_WEB_PORT ?? '5173'
+const apiURL = process.env.DUEPING_API_URL ?? `http://127.0.0.1:${apiPort}`
+const webURL = process.env.DUEPING_WEB_URL ?? `http://127.0.0.1:${webPort}`
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30 * 1000,
@@ -10,20 +15,25 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: webURL,
     trace: 'on-first-retry',
   },
   webServer: [
     {
-      command: 'cd ../backend && DUEPING_ENABLE_RESET=1 DUEPING_DB_PATH=/tmp/dueping-e2e.db PYTHONPATH=. .venv/bin/python -m app.infrastructure.seed && DUEPING_ENABLE_RESET=1 DUEPING_DB_PATH=/tmp/dueping-e2e.db PYTHONPATH=. .venv/bin/uvicorn app.api.main:app --host 127.0.0.1 --port 8000',
-      url: 'http://127.0.0.1:8000/api/system/health',
-      reuseExistingServer: true,
-      timeout: 30 * 1000,
+      command: 'node ./scripts/start-e2e-backend.mjs',
+      url: `${apiURL}/api/system/health`,
+      env: {
+        DUEPING_E2E_API_PORT: apiPort,
+        DUEPING_API_URL: apiURL,
+      },
+      reuseExistingServer: false,
+      timeout: 60 * 1000,
     },
     {
-      command: 'npm run dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: true,
+      command: `npm run dev -- --host 127.0.0.1 --port ${webPort} --strictPort`,
+      url: webURL,
+      env: { DUEPING_API_URL: apiURL },
+      reuseExistingServer: false,
       timeout: 30 * 1000,
     },
   ],

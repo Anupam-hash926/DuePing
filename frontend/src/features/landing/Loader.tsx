@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { isReducedMotion } from '../../lib/motion'
-import { Ring } from '../../ui/Ring'
+import { PingMark } from '../../ui/PingMark'
 
 export interface LoaderProps {
   onComplete: () => void
@@ -59,7 +59,7 @@ export const Loader: React.FC<LoaderProps> = ({ onComplete }) => {
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className="flex flex-col items-center gap-4"
           >
-            <Ring size="lg" color="#007AFF" />
+            <PingMark size="lg" color="#007AFF" />
             <span className="font-light tracking-tight text-xl text-text">DuePing</span>
           </motion.div>
         </motion.div>

@@ -12,6 +12,7 @@ import { Sheet } from '../../ui/Sheet'
 import { Skeleton } from '../../ui/Skeleton'
 import { EmptyState } from '../../ui/EmptyState'
 import { useToast } from '../../context/ToastContext'
+import { labelOrFallback, riskLevelLabel } from '../../lib/labels'
 import { ClientSheet } from './ClientSheet'
 
 export const ClientsPage: React.FC = () => {
@@ -134,7 +135,7 @@ export const ClientsPage: React.FC = () => {
                 trailing={
                   <div className="flex items-center gap-3">
                     <Badge variant={riskVariant} size="sm">
-                      {client.risk_level}
+                      {labelOrFallback(riskLevelLabel, client.risk_level)}
                     </Badge>
                   </div>
                 }

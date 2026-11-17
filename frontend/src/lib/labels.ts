@@ -1,9 +1,23 @@
 /**
  * Human-readable labels for domain enums, status codes, and domain event types.
  */
+import type {
+  ActionSource,
+  ActionStatus,
+  BlockerStatus,
+  BlockerType,
+  Channel,
+  DocumentType,
+  FollowUpOutcome,
+  InvoiceStatus,
+  PaymentMethod,
+  Priority,
+  PromiseStatus,
+  ReminderTone,
+  RiskLevel,
+} from '../api/types'
 
-// Invoice status
-export const invoiceStatusLabel: Record<string, string> = {
+export const invoiceStatusLabel: Record<InvoiceStatus, string> = {
   DRAFT: 'Draft',
   SENT: 'Sent',
   PARTIALLY_PAID: 'Partially paid',
@@ -12,93 +26,121 @@ export const invoiceStatusLabel: Record<string, string> = {
   WRITTEN_OFF: 'Written off',
 }
 
-// Blocker type
-export const blockerTypeLabel: Record<string, string> = {
+export const blockerTypeLabel: Record<BlockerType, string> = {
   MISSING_PO: 'Missing PO',
   AWAITING_APPROVAL: 'Awaiting approval',
-  WRONG_GSTIN: 'Wrong GSTIN',
-  QUANTITY_MISMATCH: 'Quantity mismatch',
-  WRONG_AMOUNT: 'Wrong amount',
-  GOODS_NOT_DELIVERED: 'Goods not delivered',
-  PORTAL_ISSUE: 'Portal issue',
+  DISPUTED_AMOUNT: 'Disputed amount',
+  WRONG_DETAILS: 'Wrong details',
+  MISSING_DOCUMENTS: 'Missing documents',
+  NO_RESPONSE: 'No response',
   OTHER: 'Other',
 }
 
-// Promise status
-export const promiseStatusLabel: Record<string, string> = {
+export const blockerStatusLabel: Record<BlockerStatus, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In progress',
+  RESOLVED: 'Resolved',
+}
+
+export const promiseStatusLabel: Record<PromiseStatus, string> = {
   PENDING: 'Pending',
   KEPT: 'Kept',
   MISSED: 'Missed',
+  SUPERSEDED: 'Superseded',
+}
+
+export const actionStatusLabel: Record<ActionStatus, string> = {
+  PENDING: 'Pending',
+  COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 }
 
-// Action source
-export const actionSourceLabel: Record<string, string> = {
+export const actionSourceLabel: Record<ActionSource, string> = {
   BLOCKER: 'Blocker',
   PROMISE_MISSED: 'Missed promise',
   OVERDUE: 'Overdue',
   MANUAL: 'Manual',
 }
 
-// Priority
-export const priorityLabel: Record<string, string> = {
+export const priorityLabel: Record<Priority, string> = {
   LOW: 'Low',
   MEDIUM: 'Medium',
   HIGH: 'High',
   CRITICAL: 'Critical',
 }
 
-// Channel
-export const channelLabel: Record<string, string> = {
+export const channelLabel: Record<Channel, string> = {
   EMAIL: 'Email',
   PHONE: 'Phone',
   WHATSAPP: 'WhatsApp',
-  IN_PERSON: 'In person',
-  PORTAL: 'Portal',
+  MEETING: 'Meeting',
   OTHER: 'Other',
 }
 
-// Follow-up outcome
-export const followUpOutcomeLabel: Record<string, string> = {
-  PROMISE_TO_PAY: 'Promise to pay',
-  DISPUTE_RAISED: 'Dispute raised',
+export const followUpOutcomeLabel: Record<FollowUpOutcome, string> = {
   NO_RESPONSE: 'No response',
+  ACKNOWLEDGED: 'Acknowledged',
+  PROMISED_PAYMENT: 'Promised payment',
+  DISPUTED: 'Disputed',
   PAID: 'Paid',
-  PARTIAL_PAYMENT: 'Partial payment',
-  ESCALATED: 'Escalated',
   OTHER: 'Other',
 }
 
-// Payment method
-export const paymentMethodLabel: Record<string, string> = {
+export const paymentMethodLabel: Record<PaymentMethod, string> = {
   BANK_TRANSFER: 'Bank transfer',
   UPI: 'UPI',
   CARD: 'Card',
-  CHEQUE: 'Cheque',
   CASH: 'Cash',
+  CHEQUE: 'Cheque',
   OTHER: 'Other',
 }
 
-// Document type
-export const documentTypeLabel: Record<string, string> = {
-  INVOICE: 'Invoice',
+export const documentTypeLabel: Record<DocumentType, string> = {
   PURCHASE_ORDER: 'Purchase order',
+  INVOICE_COPY: 'Invoice copy',
+  APPROVAL_EVIDENCE: 'Approval evidence',
   CONTRACT: 'Contract',
-  PROOF_OF_DELIVERY: 'Proof of delivery',
-  CREDIT_NOTE: 'Credit note',
-  PAYMENT_RECEIPT: 'Payment receipt',
   OTHER: 'Other',
 }
 
-// Reminder tone
-export const reminderToneLabel: Record<string, string> = {
+export const reminderToneLabel: Record<ReminderTone, string> = {
   POLITE: 'Polite',
   FIRM: 'Firm',
   FINAL: 'Final',
 }
 
-// Domain event class name -> human label
-export const eventTypeLabel: Record<string, string> = {
+export const riskLevelLabel: Record<RiskLevel, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+}
+
+type DomainEventType =
+  | 'DomainEvent'
+  | 'InvoiceSent'
+  | 'PaymentReceived'
+  | 'InvoicePaid'
+  | 'InvoiceDisputed'
+  | 'DisputeResolved'
+  | 'InvoiceWrittenOff'
+  | 'BlockerRaised'
+  | 'BlockerResolved'
+  | 'PromiseRecorded'
+  | 'PromiseKept'
+  | 'PromiseMissed'
+  | 'InvoiceBecameOverdue'
+  | 'FollowUpLogged'
+  | 'ReminderSent'
+  | 'DocumentAttached'
+  | 'DocumentRemoved'
+  | 'ActionCreated'
+  | 'ActionCompleted'
+  | 'ActionReopened'
+  | 'ActionRescheduled'
+  | 'ActionsCancelled'
+
+export const eventTypeLabel: Record<DomainEventType, string> = {
+  DomainEvent: 'Activity recorded',
   InvoiceSent: 'Invoice sent',
   PaymentReceived: 'Payment received',
   InvoicePaid: 'Invoice paid',
@@ -119,12 +161,17 @@ export const eventTypeLabel: Record<string, string> = {
   ActionCompleted: 'Action completed',
   ActionReopened: 'Action reopened',
   ActionRescheduled: 'Action rescheduled',
+  ActionsCancelled: 'Actions cancelled',
 }
 
-/** Convert an event class name to a human-readable label. Unknown values fallback to CamelCase split. */
+/** Convert an event class name to a human label. Unknown values are title-cased. */
 export function labelForEventType(raw: string): string {
-  if (eventTypeLabel[raw]) return eventTypeLabel[raw]
-  return raw.replace(/([A-Z])/g, ' $1').trim()
+  if (raw in eventTypeLabel) return eventTypeLabel[raw as DomainEventType]
+  return raw
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 /** Pluralize a noun: plural(1, 'blocker') -> '1 blocker', plural(2, 'blocker') -> '2 blockers' */
@@ -132,7 +179,7 @@ export function plural(n: number, noun: string): string {
   return `${n} ${n === 1 ? noun : noun + 's'}`
 }
 
-/** Get human label for any enum value, with fallback to title-cased raw string. */
+/** Get a human label for an enum value; unknown values are title-cased, never raw constants. */
 export function labelOrFallback(map: Record<string, string>, raw?: string | null): string {
   if (!raw) return '—'
   return (
@@ -140,6 +187,6 @@ export function labelOrFallback(map: Record<string, string>, raw?: string | null
     raw
       .toLowerCase()
       .replace(/_/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
   )
 }

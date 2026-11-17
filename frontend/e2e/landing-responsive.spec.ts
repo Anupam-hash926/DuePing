@@ -34,6 +34,43 @@ for (const vp of viewports) {
         await nextStoryBtn.click()
         await expect(page.getByText(/Beat 02 \/ 04/i)).toBeVisible()
       }
+
+      if (vp.width === 375) {
+        const tiles = page.locator('section').filter({
+          has: page.getByRole('heading', { name: 'Every Dimension of Receivables' }),
+        }).locator('div.grid > div')
+        const firstTile = await tiles.nth(0).boundingBox()
+        const secondTile = await tiles.nth(1).boundingBox()
+        expect(firstTile).not.toBeNull()
+        expect(secondTile).not.toBeNull()
+        expect(secondTile!.y).toBeGreaterThan(firstTile!.y)
+      }
     })
   })
 }
+
+test('loader can be skipped and remains dismissed for the tab session', async ({ page }) => {
+  await page.goto('/')
+  const splash = page.locator('[aria-label="Skip splash animation"]')
+  await expect(splash).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(splash).toBeHidden()
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('dueping_loader_seen'))).toBe('1')
+
+  await page.goto('/app')
+  await page.goto('/')
+  await expect(splash).toHaveCount(0)
+})
+
+test('pinned story supports keyboard navigation with reduced motion enabled', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expect(page.locator('[aria-label="Skip splash animation"]')).toHaveCount(0)
+  await expect(page.getByText(/Beat 01 \/ 04/i)).toBeVisible()
+
+  const next = page.getByRole('button', { name: 'Next', exact: true })
+  await next.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText(/Beat 02 \/ 04/i)).toBeVisible()
+})

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, File } from 'lucide-react'
-import type { InvoiceRead, DocumentRead } from '../../../api/types'
+import type { DocumentRead, DocumentType, InvoiceRead } from '../../../api/types'
 import { GroupedList } from '../../../ui/GroupedList'
 import { ListRow } from '../../../ui/ListRow'
 import { Button } from '../../../ui/Button'
@@ -8,6 +8,7 @@ import { Sheet } from '../../../ui/Sheet'
 import { Badge } from '../../../ui/Badge'
 import { formatDate } from '../../../lib/format'
 import { useAttachDocument } from '../../../api/hooks/useMutations'
+import { documentTypeLabel, labelOrFallback } from '../../../lib/labels'
 
 export interface DocumentsPanelProps {
   invoice: InvoiceRead
@@ -18,7 +19,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ invoice }) => {
   const allowed = new Set(invoice.allowed_operations)
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [docType, setDocType] = useState('PURCHASE_ORDER')
+  const [docType, setDocType] = useState<DocumentType>('PURCHASE_ORDER')
   const [fileName, setFileName] = useState('')
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +69,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ invoice }) => {
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-text">{d.file_name}</span>
                   <Badge variant="neutral" size="sm">
-                    {d.document_type.replace('_', ' ')}
+                    {labelOrFallback(documentTypeLabel, d.document_type)}
                   </Badge>
                 </div>
               }
@@ -90,16 +91,12 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ invoice }) => {
             <label className="text-xs font-medium text-text-2 block mb-1">Document Type</label>
             <select
               value={docType}
-              onChange={(e) => setDocType(e.target.value)}
+              onChange={(e) => setDocType(e.target.value as DocumentType)}
               className="w-full h-10 px-3 bg-bg-grouped border border-hairline rounded-input text-text text-sm outline-none focus:border-tint"
             >
-              <option value="PURCHASE_ORDER">Purchase Order (PO)</option>
-              <option value="CONTRACT">Signed Contract / SOW</option>
-              <option value="DELIVERY_CHALLAN">Delivery Proof / Receipt</option>
-              <option value="TIMESHEET">Approved Timesheet</option>
-              <option value="INVOICE_COPY">Signed Invoice Copy</option>
-              <option value="DISPUTE_EVIDENCE">Dispute Resolution Evidence</option>
-              <option value="OTHER">Other Verification Document</option>
+              {Object.entries(documentTypeLabel).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </div>
 

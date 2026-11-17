@@ -1,16 +1,18 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '../context/ToastContext'
-import { ProgressRing } from '../ui/ProgressRing'
+import { getReliabilityColor, ProgressRing } from '../ui/ProgressRing'
 import { SegmentedControl } from '../ui/SegmentedControl'
 import { StatusStepper } from '../features/invoices/detail/StatusStepper'
 import { FocusCard } from '../features/action-center/FocusCard'
 import { NewInvoicePage } from '../features/invoices/NewInvoicePage'
+import { UpNextList } from '../features/action-center/UpNextList'
+import { DebtorsList } from '../features/dashboard/DebtorsList'
 import { formatDate } from '../lib/format'
-import type { ActionCenterItemRead } from '../api/types'
+import type { ActionCenterItemRead, DebtorRowRead } from '../api/types'
 
 function renderWithProviders(ui: React.ReactElement, client = new QueryClient()) {
   return render(
@@ -24,32 +26,63 @@ function renderWithProviders(ui: React.ReactElement, client = new QueryClient())
 
 describe('Phase 11 Step 2: Visual Bugs & Fixes', () => {
   describe('2.2 ProgressRing component', () => {
-    it('renders accessible progressbar with aria attributes for score 0, 33, 100', () => {
-      const { rerender } = render(<ProgressRing score={0} size={48} />)
-      let ring = screen.getByRole('progressbar')
-      expect(ring).toHaveAttribute('aria-valuenow', '0')
-      expect(ring).toHaveAttribute('aria-valuemin', '0')
-      expect(ring).toHaveAttribute('aria-valuemax', '100')
-      expect(ring).toHaveAttribute('aria-label', 'Reliability score: 0%')
-
-      rerender(<ProgressRing score={33} size={48} />)
-      ring = screen.getByRole('progressbar')
-      expect(ring).toHaveAttribute('aria-valuenow', '33')
-      expect(ring).toHaveAttribute('aria-label', 'Reliability score: 33%')
-
-      rerender(<ProgressRing score={100} size={48} />)
-      ring = screen.getByRole('progressbar')
-      expect(ring).toHaveAttribute('aria-valuenow', '100')
-      expect(ring).toHaveAttribute('aria-label', 'Reliability score: 100%')
+    it('uses the required green, amber, and red reliability thresholds', () => {
+      expect(getReliabilityColor(80)).toBe('var(--fill-green)')
+      expect(getReliabilityColor(50)).toBe('var(--fill-amber)')
+      expect(getReliabilityColor(49)).toBe('var(--fill-red)')
     })
 
-    it('renders stroke dash offset corresponding to progress percentage', () => {
-      const { container } = render(<ProgressRing score={50} size={40} strokeWidth={4} />)
-      const circles = container.querySelectorAll('circle')
-      expect(circles.length).toBe(2) // background track circle + indicator circle
-      const indicator = circles[1]
-      expect(indicator).toHaveAttribute('stroke-dasharray')
-      expect(indicator).toHaveAttribute('stroke-dashoffset')
+    it('renders the exact 0, 33, and 100 percent arcs with an image label', async () => {
+      const { container, rerender } = render(
+        <ProgressRing value={0} size={48} ariaLabel="Reliability 0 out of 100" />
+      )
+      expect(screen.getByRole('img', { name: 'Reliability 0 out of 100' })).toBeVisible()
+      const indicator = container.querySelectorAll('circle')[1]
+      const circumference = 2 * Math.PI * ((48 - 3.5) / 2)
+
+      await waitFor(() => {
+        expect(Number(indicator.getAttribute('stroke-dashoffset'))).toBeCloseTo(circumference)
+      })
+
+      rerender(<ProgressRing value={33} size={48} ariaLabel="Reliability 33 out of 100" />)
+      expect(screen.getByRole('img', { name: 'Reliability 33 out of 100' })).toBeInTheDocument()
+      await waitFor(() => {
+        expect(Number(indicator.getAttribute('stroke-dashoffset'))).toBeCloseTo(circumference * 0.67)
+      })
+
+      rerender(<ProgressRing value={100} size={48} ariaLabel="Reliability 100 out of 100" />)
+      expect(screen.getByRole('img', { name: 'Reliability 100 out of 100' })).toBeInTheDocument()
+      await waitFor(() => {
+        expect(Number(indicator.getAttribute('stroke-dashoffset'))).toBeCloseTo(0)
+      })
+    })
+
+    it('uses the debtor reliability score rather than a full ring', () => {
+      const debtors: DebtorRowRead[] = [{
+        client_id: 'c-1',
+        name: 'Acme Corp',
+        outstanding: { amount: '22000.00', currency: 'INR' },
+        reliability_score: 42,
+      }]
+      renderWithProviders(<DebtorsList debtors={debtors} />)
+
+      expect(screen.getByRole('img', { name: 'Reliability 42 out of 100' })).toBeInTheDocument()
+    })
+
+    it('shows the final arc immediately when reduced motion is requested', async () => {
+      vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+      try {
+        const { container } = render(
+          <ProgressRing value={33} size={48} ariaLabel="Reliability 33 out of 100" />
+        )
+        const indicator = container.querySelectorAll('circle')[1]
+        const expectedOffset = 2 * Math.PI * ((48 - 3.5) / 2) * 0.67
+        await waitFor(() => {
+          expect(Number(indicator.getAttribute('stroke-dashoffset'))).toBeCloseTo(expectedOffset)
+        })
+      } finally {
+        vi.unstubAllGlobals()
+      }
     })
   })
 
@@ -73,6 +106,25 @@ describe('Phase 11 Step 2: Visual Bugs & Fixes', () => {
       const riskTab = screen.getByRole('tab', { name: 'Risk' })
       expect(riskTab).toHaveAttribute('title', 'Risk-weighted')
       expect(riskTab).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('keeps arrow-key navigation between strategy tabs', () => {
+      const onChange = vi.fn()
+      render(
+        <SegmentedControl
+          options={[
+            { value: 'RISK', label: 'Risk' },
+            { value: 'AMOUNT', label: 'Amount' },
+            { value: 'OLDEST', label: 'Oldest' },
+          ]}
+          value="RISK"
+          onChange={onChange}
+          ariaLabel="Sort ranking strategies"
+        />
+      )
+
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Risk' }), { key: 'ArrowRight' })
+      expect(onChange).toHaveBeenCalledWith('AMOUNT')
     })
   })
 
@@ -123,6 +175,40 @@ describe('Phase 11 Step 2: Visual Bugs & Fixes', () => {
       expect(screen.getByText('Reliability score 42%')).toBeInTheDocument()
       // Suggested tone should be displayed
       expect(screen.getByText('Suggested: FIRM')).toBeInTheDocument()
+    })
+
+    describe('2.4 UpNextList facts', () => {
+      it('shows each structured fact once and omits repeated reason tokens', () => {
+        const item: ActionCenterItemRead = {
+          action: {
+            id: 'act-up-next',
+            invoice_id: 'inv-up-next',
+            description: 'Send reminder for invoice INV-100',
+            due_date: '2026-11-20',
+            priority: 'CRITICAL',
+            source: 'OVERDUE',
+            status: 'PENDING',
+          },
+          invoice_id: 'inv-up-next',
+          invoice_number: 'INV-100',
+          client_id: 'c-1',
+          client_name: 'Acme Corp',
+          outstanding: { amount: '22000.00', currency: 'INR' },
+          days_overdue: 12,
+          reason: 'CRITICAL priority · 12 days overdue · ₹22,000 outstanding · Reliability score 42%',
+          score: 95,
+          suggested_tone: 'FIRM',
+        }
+        renderWithProviders(
+          <UpNextList items={[item]} onComplete={vi.fn()} onSelect={vi.fn()} />
+        )
+
+        expect(screen.getAllByText(/Critical priority/i)).toHaveLength(1)
+        expect(screen.getAllByText(/12 days overdue/i)).toHaveLength(1)
+        expect(screen.getAllByText(/₹22,000/)).toHaveLength(1)
+        expect(screen.getByText('Reliability score 42%')).toBeInTheDocument()
+        expect(screen.getByText('Suggested: FIRM')).toBeInTheDocument()
+      })
     })
   })
 

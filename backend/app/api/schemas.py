@@ -375,6 +375,7 @@ class DebtorRowRead(BaseModel):
     client_id: str
     name: str
     outstanding: MoneyDTO
+    reliability_score: int | None
 
 
 class CollectionReportRead(BaseModel):

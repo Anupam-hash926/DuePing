@@ -78,7 +78,7 @@ export function useAudit(invoiceId?: string) {
 export function useNotifications(unreadOnly = false) {
   return useQuery({
     queryKey: queryKeys.notifications(unreadOnly),
-    queryFn: () => apiClient.get<NotificationRead[]>(`/notifications?unread_only=${unreadOnly}`),
+    queryFn: () => apiClient.get<NotificationRead[]>(`/notifications?unread=${unreadOnly}`),
   })
 }
 

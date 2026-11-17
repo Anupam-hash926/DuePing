@@ -102,6 +102,19 @@ class TestPlaybookStrategy:
             assert act.due_date == TODAY + timedelta(days=due_days)
             assert text_snip in act.description
 
+    def test_no_response_action_does_not_store_a_stale_reminder_tone(self):
+        playbook = ResolutionPlaybook()
+        client = Client(name="Acme Corp", email="a@acme.com", company_name="Acme Ltd")
+        inv = make_invoice(invoice_number="DP-2026-0001")
+        blocker = PaymentBlocker(type=BlockerType.NO_RESPONSE, description="No reply", created_at=NOW)
+
+        action = playbook.plan_for(blocker, inv, client, TODAY)
+
+        assert action.description == (
+            "Try another channel or contact for Acme Corp and send a reminder for invoice DP-2026-0001"
+        )
+        assert not any(tone in action.description for tone in ("POLITE", "FIRM", "FINAL"))
+
     def test_playbook_custom_extensibility(self):
         class CustomStrategy(ResolutionStrategy):
             blocker_type = BlockerType.OTHER

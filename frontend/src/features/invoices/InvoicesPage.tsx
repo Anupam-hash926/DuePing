@@ -11,7 +11,7 @@ import { ListRow } from '../../ui/ListRow'
 import { EmptyState } from '../../ui/EmptyState'
 import { Skeleton } from '../../ui/Skeleton'
 import { formatMoney, formatDate } from '../../lib/format'
-import { invoiceStatusLabel, plural } from '../../lib/labels'
+import { invoiceStatusLabel, labelOrFallback, plural } from '../../lib/labels'
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -215,7 +215,7 @@ export const InvoicesPage: React.FC = () => {
                     </div>
                   </div>
                   <Badge variant={getStatusVariant(inv.status)} size="sm">
-                    {invoiceStatusLabel[inv.status] ?? inv.status}
+                    {labelOrFallback(invoiceStatusLabel, inv.status)}
                   </Badge>
                   <ChevronRight className="w-4 h-4 text-text-3" />
                 </div>

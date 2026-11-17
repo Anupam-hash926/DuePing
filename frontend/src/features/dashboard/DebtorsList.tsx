@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { DebtorRowRead } from '../../api/types'
 import { GroupedList } from '../../ui/GroupedList'
 import { ListRow } from '../../ui/ListRow'
-import { ProgressRing } from '../../ui/ProgressRing'
+import { getReliabilityColor, ProgressRing } from '../../ui/ProgressRing'
 import { formatMoney } from '../../lib/format'
 
 interface DebtorsListProps {
@@ -24,12 +24,14 @@ export const DebtorsList: React.FC<DebtorsListProps> = ({ debtors }) => {
             key={debtor.client_id}
             leading={
               <div className="flex items-center justify-center">
-                <ProgressRing
-                  size="sm"
-                  value={100}
-                  color="var(--tint)"
-                  ariaLabel={`Debtor ${debtor.name}`}
-                />
+                {debtor.reliability_score != null && (
+                  <ProgressRing
+                    size="sm"
+                    value={debtor.reliability_score}
+                    color={getReliabilityColor(debtor.reliability_score)}
+                    ariaLabel={`Reliability ${debtor.reliability_score} out of 100`}
+                  />
+                )}
               </div>
             }
             title={

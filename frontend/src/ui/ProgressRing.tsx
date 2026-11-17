@@ -37,7 +37,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   const rawScore = score ?? value ?? 0
   const clamped = Math.max(0, Math.min(100, Math.round(rawScore)))
   const effectiveColor = color ?? getReliabilityColor(clamped)
-  const defaultAriaLabel = ariaLabel ?? `Reliability score: ${clamped}%`
+  const defaultAriaLabel = ariaLabel ?? `Reliability ${clamped} out of 100`
 
   const center = pixelSize / 2
   const radius = Math.max(0, (pixelSize - strokeWidth) / 2)
@@ -48,10 +48,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
 
   return (
     <div
-      role="progressbar"
-      aria-valuenow={clamped}
-      aria-valuemin={0}
-      aria-valuemax={100}
+      role="img"
       aria-label={defaultAriaLabel}
       className={cn('relative inline-flex items-center justify-center flex-shrink-0 select-none', className)}
       style={{ width: pixelSize, height: pixelSize }}

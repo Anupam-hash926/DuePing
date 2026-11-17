@@ -14,7 +14,7 @@ export const NotificationsPopover: React.FC = () => {
   const unreadCount = notifications?.filter((n) => !n.is_read).length ?? 0
 
   const handleMarkAllRead = async () => {
-    await apiClient.post('/notifications/read-all')
+    await apiClient.post('/notifications/read')
     qc.invalidateQueries({ queryKey: queryKeys.notifications(false) })
     qc.invalidateQueries({ queryKey: queryKeys.notifications(true) })
   }

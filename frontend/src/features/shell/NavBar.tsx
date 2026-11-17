@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
-import { Ring } from '../../ui/Ring'
+import { PingMark } from '../../ui/PingMark'
 import { IconButton } from '../../ui/IconButton'
 import { SegmentedControl } from '../../ui/SegmentedControl'
 import { NotificationsPopover } from './NotificationsPopover'
@@ -46,7 +46,7 @@ export const NavBar: React.FC<NavBarProps> = ({ onOpenCommandPalette }) => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         {/* Brand / Logo */}
         <Link to="/app" className="flex items-center gap-2.5 group focus-visible:outline-none">
-          <Ring size="sm" pulse={false} />
+          <PingMark size="sm" pulse={false} />
           <span className="font-semibold tracking-tight text-base text-text group-hover:opacity-80 transition-opacity">
             DuePing
           </span>

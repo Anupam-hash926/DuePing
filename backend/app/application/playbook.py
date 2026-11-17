@@ -155,7 +155,7 @@ class NoResponseResolution(ResolutionStrategy):
     def plan(self, ctx: PlaybookContext) -> NextAction:
         desc = (
             f"Try another channel or contact for {ctx.client_name} and send a "
-            f"FIRM reminder for invoice {ctx.invoice_number}"
+            f"reminder for invoice {ctx.invoice_number}"
         )
         return NextAction(
             description=desc,

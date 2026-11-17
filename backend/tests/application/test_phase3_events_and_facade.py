@@ -311,6 +311,9 @@ class TestActionCenterAndDashboard:
         facade = env["facade"]
         c1 = facade.create_client("Alpha Co", "alpha@test.com")
         c2 = facade.create_client("Beta Co", "beta@test.com")
+        client_with_missed_promise = env["client_repo"].get(c1.id)
+        client_with_missed_promise.register_promise_missed()
+        env["client_repo"].save(client_with_missed_promise)
 
         inv1 = facade.create_invoice(c1.id, Money.of(100_000), TODAY - timedelta(days=40), TODAY - timedelta(days=10))
         facade.send_invoice(inv1.id)
@@ -332,6 +335,8 @@ class TestActionCenterAndDashboard:
         assert len(report.top_debtors) == 2
         assert report.top_debtors[0].name == "Alpha Co"
         assert report.top_debtors[0].outstanding == Money.of(100_000)
+        assert report.top_debtors[0].reliability_score == 0
+        assert report.top_debtors[1].reliability_score == 100
 
 
 # ── Facade Settings & System Tests ────────────────────────────────────────────
@@ -484,6 +489,7 @@ class TestFacadeSystemSettings:
         ovd_actions = [a for a in updated_inv.actions if a.source == ActionSource.OVERDUE]
         assert len(ovd_actions) == 1
         desc = ovd_actions[0].description
+        assert desc == f"Send a reminder to {client.name} about overdue invoice {updated_inv.invoice_number}"
         assert "Send a reminder to" in desc
         assert "days overdue" not in desc
         assert not any(t in desc for t in ["POLITE", "FIRM", "FINAL"])
@@ -507,5 +513,20 @@ class TestFacadeSystemSettings:
         view = facade.get_action_center()
         matched = [item for item in view.items if item.invoice_id == inv.id]
         assert len(matched) == 1
-        assert matched[0].suggested_tone is not None
-        assert matched[0].suggested_tone in ("POLITE", "FIRM", "FINAL")
+        current_invoice = facade.get_invoice(inv.id)
+        expected_tone = ReminderFactory().tone_for(current_invoice, clock.today()).value
+        assert matched[0].suggested_tone == expected_tone
+
+        facade.add_manual_action(
+            invoice_id=inv.id,
+            description="Review account notes",
+            priority=Priority.MEDIUM,
+            due_date=clock.today(),
+        )
+        view = facade.get_action_center()
+        manual_item = next(
+            item
+            for item in view.items
+            if item.invoice_id == inv.id and item.action.source == ActionSource.MANUAL
+        )
+        assert manual_item.suggested_tone is None

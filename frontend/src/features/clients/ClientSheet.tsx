@@ -12,7 +12,7 @@ import { ListRow } from '../../ui/ListRow'
 import { Skeleton } from '../../ui/Skeleton'
 import { useToast } from '../../context/ToastContext'
 import { formatMoney, formatDate } from '../../lib/format'
-import { invoiceStatusLabel } from '../../lib/labels'
+import { invoiceStatusLabel, labelOrFallback, riskLevelLabel } from '../../lib/labels'
 
 interface ClientSheetProps {
   clientId: string | null
@@ -99,7 +99,7 @@ export const ClientSheet: React.FC<ClientSheetProps> = ({ clientId, open, onOpen
               </div>
             </div>
             <Badge variant={riskColor} size="sm">
-              {client.risk_level} Risk
+              {labelOrFallback(riskLevelLabel, client.risk_level)} Risk
             </Badge>
           </div>
 
@@ -212,7 +212,7 @@ export const ClientSheet: React.FC<ClientSheetProps> = ({ clientId, open, onOpen
                     }
                     subtitle={
                       <span className="text-xs text-text-3">
-                        Due {formatDate(inv.due_date)} · {invoiceStatusLabel[inv.status] ?? inv.status}
+                        Due {formatDate(inv.due_date)} · {labelOrFallback(invoiceStatusLabel, inv.status)}
                       </span>
                     }
                     trailing={

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { CheckCircle2, Clock, Plus } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { InvoiceRead, NextActionRead } from '../../../api/types'
+import type { InvoiceRead, NextActionRead, Priority } from '../../../api/types'
 import { apiClient } from '../../../api/client'
 import { invalidateInvoiceDependencies } from '../../../api/queryClient'
 import { GroupedList } from '../../../ui/GroupedList'
@@ -11,6 +11,7 @@ import { Sheet } from '../../../ui/Sheet'
 import { Badge } from '../../../ui/Badge'
 import { formatDate } from '../../../lib/format'
 import { useCreateAction, useRescheduleAction } from '../../../api/hooks/useMutations'
+import { labelOrFallback, priorityLabel } from '../../../lib/labels'
 
 export interface ActionsPanelProps {
   invoice: InvoiceRead
@@ -22,7 +23,7 @@ export const ActionsPanel: React.FC<ActionsPanelProps> = ({ invoice }) => {
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [desc, setDesc] = useState('')
-  const [priority, setPriority] = useState('HIGH')
+  const [priority, setPriority] = useState<Priority>('HIGH')
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0])
 
   // Reschedule state
@@ -105,9 +106,9 @@ export const ActionsPanel: React.FC<ActionsPanelProps> = ({ invoice }) => {
                     {act.description}
                   </span>
                   <Badge variant={getPriorityVariant(act.priority)} size="sm">
-                    {act.priority}
+                    {labelOrFallback(priorityLabel, act.priority)}
                   </Badge>
-                  {act.source === 'PLAYBOOK' && (
+                  {act.source === 'BLOCKER' && (
                     <Badge variant="purple" size="sm">Playbook</Badge>
                   )}
                 </div>
@@ -166,7 +167,7 @@ export const ActionsPanel: React.FC<ActionsPanelProps> = ({ invoice }) => {
               <label className="text-xs font-medium text-text-2 block mb-1">Priority</label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value)}
+                onChange={(e) => setPriority(e.target.value as Priority)}
                 className="w-full h-10 px-3 bg-bg-grouped border border-hairline rounded-input text-text text-sm outline-none focus:border-tint"
               >
                 <option value="HIGH">High</option>

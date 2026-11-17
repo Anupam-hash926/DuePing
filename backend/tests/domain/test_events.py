@@ -107,6 +107,7 @@ def test_raise_blocker_emits_blocker_raised():
     assert isinstance(events[0], BlockerRaised)
     assert events[0].blocker_id == b.id
     assert events[0].blocker_type == "MISSING_PO"
+    assert "blocker raised (Missing PO)" in events[0].describe()
 
 
 def test_raise_disputed_amount_emits_blocker_raised_and_invoice_disputed():
@@ -203,6 +204,7 @@ def test_mark_reminder_sent_emits_reminder_sent():
     assert len(events) == 1
     assert isinstance(events[0], ReminderSent)
     assert events[0].tone == "POLITE"
+    assert "polite reminder sent" in events[0].describe()
 
 
 def test_attach_document_emits_document_attached():
@@ -340,5 +342,4 @@ def test_cancel_actions_emits_actions_cancelled_only_when_count_positive():
     assert isinstance(events[0], ActionsCancelled)
     assert events[0].count == 2
     assert events[0].source == "MANUAL"
-    assert "2 action(s) cancelled (source: MANUAL)" in events[0].describe()
-
+    assert "2 actions cancelled (source: Manual)" in events[0].describe()

@@ -7,7 +7,7 @@ import { Button } from '../../../ui/Button'
 import { MoneyText } from '../../../ui/MoneyText'
 import { PingMark } from '../../../ui/PingMark'
 import { formatDate } from '../../../lib/format'
-import { invoiceStatusLabel, plural } from '../../../lib/labels'
+import { invoiceStatusLabel, labelOrFallback, plural } from '../../../lib/labels'
 import { useSendInvoice } from '../../../api/hooks/useMutations'
 
 export interface InvoiceHeaderProps {
@@ -48,7 +48,7 @@ export const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({
             {invoice.invoice_number}
           </h1>
           <Badge variant={getStatusVariant(invoice.status)} dot>
-            {invoiceStatusLabel[invoice.status] ?? invoice.status.replace('_', ' ')}
+            {labelOrFallback(invoiceStatusLabel, invoice.status)}
           </Badge>
           {invoice.is_overdue && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill bg-danger/10 border border-danger/20 text-danger text-xs font-medium">

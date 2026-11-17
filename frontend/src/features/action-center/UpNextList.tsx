@@ -6,6 +6,7 @@ import { GroupedList } from '../../ui/GroupedList'
 import { ListRow } from '../../ui/ListRow'
 import { IconButton } from '../../ui/IconButton'
 import { formatMoney, formatDate } from '../../lib/format'
+import { labelOrFallback, priorityLabel } from '../../lib/labels'
 
 interface UpNextListProps {
   items: ActionCenterItemRead[]
@@ -29,6 +30,10 @@ export const UpNextList: React.FC<UpNextListProps> = ({ items, onComplete, onSel
               : item.action.priority === 'HIGH'
               ? 'bg-fill-amber'
               : 'bg-tint'
+          const reliabilityFact = item.reason
+            ?.split(' · ')
+            .map((fact) => fact.trim())
+            .find((fact) => fact.toLowerCase().includes('reliability'))
 
           return (
             <ListRow
@@ -49,6 +54,23 @@ export const UpNextList: React.FC<UpNextListProps> = ({ items, onComplete, onSel
                   <span>{item.client_name}</span>
                   <span>·</span>
                   <Link to={`/app/invoices/${item.invoice_id}`} className="hover:underline text-tint" onClick={(e) => e.stopPropagation()}>{item.invoice_number}</Link>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-bg-grouped border border-hairline text-text">
+                    <span className={`w-2 h-2 rounded-full ${priorityColor}`} />
+                    {labelOrFallback(priorityLabel, item.action.priority)} priority
+                  </span>
+                  {item.days_overdue > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-fill-red/10 border border-fill-red/20 text-fill-red">
+                      {item.days_overdue} days overdue
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded-full bg-bg-grouped border border-hairline text-text">
+                    Outstanding {formatMoney(item.outstanding)}
+                  </span>
+                  {reliabilityFact && (
+                    <span className="px-2 py-0.5 rounded-full bg-bg-grouped border border-hairline text-text-2">
+                      {reliabilityFact}
+                    </span>
+                  )}
                   {item.suggested_tone && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-tint/10 text-tint border border-tint/20">
                       Suggested: {item.suggested_tone}
@@ -58,13 +80,8 @@ export const UpNextList: React.FC<UpNextListProps> = ({ items, onComplete, onSel
               }
               trailing={
                 <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-text">
-                      {formatMoney(item.outstanding)}
-                    </div>
-                    <div className="text-xs text-text-3">
-                      due {formatDate(item.action.due_date)}
-                    </div>
+                  <div className="text-right text-xs text-text-3">
+                    due {formatDate(item.action.due_date)}
                   </div>
                   <IconButton
                     aria-label="Complete action"

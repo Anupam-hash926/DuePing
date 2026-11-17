@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Button } from '../../ui/Button'
 import { TextButton } from '../../ui/TextButton'
-import { Ring } from '../../ui/Ring'
+import { PingMark } from '../../ui/PingMark'
 import { Badge } from '../../ui/Badge'
 import { MoneyText } from '../../ui/MoneyText'
 import { isReducedMotion } from '../../lib/motion'
@@ -24,7 +24,7 @@ export const Hero: React.FC = () => {
         <div className="absolute w-[500px] h-[500px] rounded-full bg-teal/10 blur-[120px] -top-20 -left-20" />
         <div className="absolute w-[600px] h-[600px] rounded-full bg-purple/10 blur-[140px] -bottom-40 -right-20" />
         <div className="opacity-30">
-          <Ring size="hero" color="#007AFF" />
+          <PingMark size="hero" color="#007AFF" />
         </div>
       </div>
 

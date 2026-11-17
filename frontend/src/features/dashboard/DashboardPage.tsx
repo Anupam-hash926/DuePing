@@ -2,13 +2,14 @@ import React from 'react'
 import { useDashboard } from '../../api/hooks/useQueries'
 import { LargeTitle } from '../../ui/LargeTitle'
 import { Skeleton } from '../../ui/Skeleton'
-import { ProgressRing } from '../../ui/ProgressRing'
+import { ProgressRing, getReliabilityColor } from '../../ui/ProgressRing'
 import { useCountUp } from '../../ui/Stat'
 import { AgingBar } from './AgingBar'
 import { TrendSpark } from './TrendSpark'
 import { DebtorsList } from './DebtorsList'
 import { formatMoney } from '../../lib/format'
 import { useDefaultCurrency } from '../../lib/useCurrency'
+import { blockerTypeLabel, labelOrFallback } from '../../lib/labels'
 
 const BigNumeral: React.FC<{
   label: string
@@ -41,10 +42,10 @@ const BigNumeral: React.FC<{
       <div
         data-testid="big-numeral"
         className={`font-extralight tracking-tight whitespace-nowrap [font-variant-numeric:tabular-nums] ${colorClass}`}
-        style={{ fontSize: 'clamp(1.75rem, 8cqi, 4.25rem)' }}
+        style={{ fontSize: 'clamp(1rem, 10cqi, 4.5rem)' }}
       >
         <span>{whole}</span>
-        {decimal && <span className="text-[0.45em] opacity-75">.{decimal}</span>}
+        {decimal && <span className="text-[0.45em]">.{decimal}</span>}
       </div>
       {meta && <div className="text-xs font-medium text-text-3">{meta}</div>}
     </div>
@@ -127,7 +128,7 @@ export const DashboardPage: React.FC = () => {
               <ProgressRing
                 size="lg"
                 value={keepRate}
-                color={keepRate >= 80 ? 'var(--fill-green)' : keepRate >= 50 ? 'var(--fill-amber)' : 'var(--fill-red)'}
+                color={getReliabilityColor(keepRate)}
                 label={`${Math.round(keepRate)}%`}
                 ariaLabel={`Promise keep rate ${Math.round(keepRate)} percent`}
               />
@@ -153,7 +154,7 @@ export const DashboardPage: React.FC = () => {
                       key={type}
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-fill-red/10 border border-fill-red/20 text-fill-red"
                     >
-                      <span>{type}</span>
+                      <span>{labelOrFallback(blockerTypeLabel, type)}</span>
                       <strong className="font-semibold">({count})</strong>
                     </span>
                   ))}

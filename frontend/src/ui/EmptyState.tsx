@@ -1,5 +1,5 @@
 import React from 'react'
-import { Ring } from './Ring'
+import { PingMark } from './PingMark'
 import { cn } from '../lib/cn'
 
 export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -26,7 +26,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {...props}
     >
       <div className="mb-4">
-        {icon ?? <Ring size="lg" pulse={false} />}
+        {icon ?? <PingMark size="lg" pulse={false} />}
       </div>
       <h3 className="text-lg font-medium text-text tracking-tight mb-1">{title}</h3>
       {description && <p className="text-sm text-text-2 mb-6 leading-relaxed">{description}</p>}

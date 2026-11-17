@@ -5,10 +5,16 @@ without reloading anything from the repository.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 
 from app.domain.money import Money
+
+
+def _humanize_value(value: str) -> str:
+    words = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", value).replace("_", " ").lower().split()
+    return " ".join("PO" if word == "po" else word.capitalize() for word in words)
 
 
 @dataclass
@@ -26,7 +32,7 @@ class DomainEvent:
 
     def describe(self) -> str:
         """Human-readable audit description including the invoice number."""
-        return f"{self.event_type} on invoice {self.invoice_number}"
+        return f"{_humanize_value(self.event_type)} on invoice {self.invoice_number}"
 
 
 # ── Invoice lifecycle ─────────────────────────────────────────────────────────
@@ -97,7 +103,10 @@ class BlockerRaised(DomainEvent):
     blocker_type: str = ""
 
     def describe(self) -> str:
-        return f"Invoice {self.invoice_number}: blocker raised ({self.blocker_type})"
+        return (
+            f"Invoice {self.invoice_number}: blocker raised "
+            f"({_humanize_value(self.blocker_type)})"
+        )
 
 
 @dataclass
@@ -178,7 +187,7 @@ class ReminderSent(DomainEvent):
     tone: str = ""
 
     def describe(self) -> str:
-        return f"Invoice {self.invoice_number}: {self.tone} reminder sent"
+        return f"Invoice {self.invoice_number}: {_humanize_value(self.tone).lower()} reminder sent"
 
 
 # ── Documents & actions ───────────────────────────────────────────────────────
@@ -253,5 +262,6 @@ class ActionsCancelled(DomainEvent):
     source: str | None = None
 
     def describe(self) -> str:
-        src = f" (source: {self.source})" if self.source else ""
-        return f"Invoice {self.invoice_number}: {self.count} action(s) cancelled{src}"
+        noun = "action" if self.count == 1 else "actions"
+        src = f" (source: {_humanize_value(self.source)})" if self.source else ""
+        return f"Invoice {self.invoice_number}: {self.count} {noun} cancelled{src}"

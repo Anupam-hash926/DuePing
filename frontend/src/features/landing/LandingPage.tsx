@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Ring } from '../../ui/Ring'
+import { PingMark } from '../../ui/PingMark'
 import { Button } from '../../ui/Button'
 import { Loader } from './Loader'
 import { Hero } from './Hero'
@@ -21,7 +21,7 @@ export const LandingPage: React.FC = () => {
       <header className="sticky top-0 z-30 w-full glass hairline-b select-none">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
-            <Ring size="sm" pulse={false} />
+            <PingMark size="sm" pulse={false} />
             <span className="font-semibold tracking-tight text-text group-hover:opacity-80 transition-opacity">
               DuePing
             </span>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Plus } from 'lucide-react'
-import type { InvoiceRead, PaymentRead } from '../../../api/types'
+import type { InvoiceRead, PaymentMethod, PaymentRead } from '../../../api/types'
 import { GroupedList } from '../../../ui/GroupedList'
 import { ListRow } from '../../../ui/ListRow'
 import { Button } from '../../../ui/Button'
@@ -8,6 +8,7 @@ import { Sheet } from '../../../ui/Sheet'
 import { MoneyText } from '../../../ui/MoneyText'
 import { formatDate } from '../../../lib/format'
 import { useRecordPayment } from '../../../api/hooks/useMutations'
+import { labelOrFallback, paymentMethodLabel } from '../../../lib/labels'
 
 export interface PaymentsPanelProps {
   invoice: InvoiceRead
@@ -25,7 +26,7 @@ export const PaymentsPanel: React.FC<PaymentsPanelProps> = ({
 
   const [amount, setAmount] = useState(invoice.outstanding.amount)
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split('T')[0])
-  const [method, setMethod] = useState('BANK_TRANSFER')
+  const [method, setMethod] = useState<PaymentMethod>('BANK_TRANSFER')
   const [refNum, setRefNum] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +66,7 @@ export const PaymentsPanel: React.FC<PaymentsPanelProps> = ({
             <ListRow
               key={p.id}
               title={<MoneyText amount={p.amount.amount} currency={p.amount.currency} />}
-              subtitle={`${p.method.replace('_', ' ')}${p.reference_number ? ` · Ref: ${p.reference_number}` : ''}`}
+              subtitle={`${labelOrFallback(paymentMethodLabel, p.method)}${p.reference_number ? ` · Ref: ${p.reference_number}` : ''}`}
               trailing={<span className="text-text-2">{formatDate(p.payment_date)}</span>}
             />
           ))}
@@ -107,7 +108,7 @@ export const PaymentsPanel: React.FC<PaymentsPanelProps> = ({
             <label className="text-xs font-medium text-text-2 block mb-1">Method</label>
             <select
               value={method}
-              onChange={(e) => setMethod(e.target.value)}
+              onChange={(e) => setMethod(e.target.value as PaymentMethod)}
               className="w-full h-10 px-3 bg-bg-grouped border border-hairline rounded-input text-text text-sm outline-none focus:border-tint"
             >
               <option value="BANK_TRANSFER">Bank Transfer (NEFT/RTGS/IMPS)</option>

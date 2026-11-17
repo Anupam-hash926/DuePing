@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { PhoneCall, Shield, Plus } from 'lucide-react'
-import type { InvoiceRead, AuditEventRead, FollowUpRead } from '../../../api/types'
+import type { Channel, FollowUpOutcome, InvoiceRead, AuditEventRead, FollowUpRead } from '../../../api/types'
 import { GroupedList } from '../../../ui/GroupedList'
 import { ListRow } from '../../../ui/ListRow'
 import { Button } from '../../../ui/Button'
@@ -27,8 +27,8 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const logFollowUp = useLogFollowUp(invoice.id)
   const allowed = new Set(invoice.allowed_operations)
 
-  const [channel, setChannel] = useState('PHONE')
-  const [outcome, setOutcome] = useState('PROMISE_TO_PAY')
+  const [channel, setChannel] = useState<Channel>('PHONE')
+  const [outcome, setOutcome] = useState<FollowUpOutcome>('PROMISED_PAYMENT')
   const [notes, setNotes] = useState('')
   const [promisedDate, setPromisedDate] = useState('')
   const [promisedAmount, setPromisedAmount] = useState('')
@@ -39,8 +39,8 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
       channel,
       outcome,
       notes: notes.trim() || 'Follow-up logged',
-      promised_date: outcome === 'PROMISE_TO_PAY' && promisedDate ? promisedDate : undefined,
-      promised_amount: outcome === 'PROMISE_TO_PAY' && promisedAmount ? promisedAmount : undefined,
+      promised_date: outcome === 'PROMISED_PAYMENT' && promisedDate ? promisedDate : undefined,
+      promised_amount: outcome === 'PROMISED_PAYMENT' && promisedAmount ? promisedAmount : undefined,
     })
     onFollowUpModalChange(false)
     setNotes('')
@@ -134,28 +134,26 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
               <label className="text-xs font-medium text-text-2 block mb-1">Channel</label>
               <select
                 value={channel}
-                onChange={(e) => setChannel(e.target.value)}
+                onChange={(e) => setChannel(e.target.value as Channel)}
                 className="w-full h-10 px-3 bg-bg-grouped border border-hairline rounded-input text-text text-sm outline-none focus:border-tint"
               >
-                <option value="PHONE">Phone Call</option>
-                <option value="EMAIL">Email</option>
-                <option value="WHATSAPP">WhatsApp</option>
-                <option value="IN_PERSON">In Person</option>
+                <option value="EMAIL">{labelOrFallback(channelLabel, 'EMAIL')}</option>
+                <option value="PHONE">{labelOrFallback(channelLabel, 'PHONE')}</option>
+                <option value="WHATSAPP">{labelOrFallback(channelLabel, 'WHATSAPP')}</option>
+                <option value="MEETING">{labelOrFallback(channelLabel, 'MEETING')}</option>
+                <option value="OTHER">{labelOrFallback(channelLabel, 'OTHER')}</option>
               </select>
             </div>
             <div>
               <label className="text-xs font-medium text-text-2 block mb-1">Outcome</label>
               <select
                 value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
+                onChange={(e) => setOutcome(e.target.value as FollowUpOutcome)}
                 className="w-full h-10 px-3 bg-bg-grouped border border-hairline rounded-input text-text text-sm outline-none focus:border-tint"
               >
-                <option value="PROMISE_TO_PAY">Promise to Pay</option>
-                <option value="ACKNOWLEDGED">Acknowledged</option>
-                <option value="DISPUTE_RAISED">Dispute Raised</option>
-                <option value="WRONG_CONTACT">Wrong Contact</option>
-                <option value="NO_ANSWER">No Answer</option>
-                <option value="ESCALATED">Escalated</option>
+                {Object.entries(followUpOutcomeLabel).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -171,7 +169,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
             />
           </div>
 
-          {outcome === 'PROMISE_TO_PAY' && (
+          {outcome === 'PROMISED_PAYMENT' && (
             <div className="grid grid-cols-2 gap-3 p-3 bg-bg-grouped rounded-input border border-hairline">
               <div>
                 <label className="text-xs font-medium text-text-2 block mb-1">Promised Date</label>

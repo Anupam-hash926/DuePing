@@ -74,8 +74,8 @@ export const AuditPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <LargeTitle
-        title="Audit Log"
-        subtitle="Complete, immutable record of all activity, transactions, and invoice state changes."
+        title="Activity"
+        subtitle="A complete record of transactions and invoice state changes."
       />
 
       <SearchField

@@ -1,35 +1,49 @@
 import { test, expect } from '@playwright/test'
 
+const apiBaseURL = process.env.DUEPING_API_URL
+  ?? `http://127.0.0.1:${process.env.DUEPING_E2E_API_PORT ?? '8000'}`
+
 test.describe('DuePing Visual & Responsive Fixes', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 
   test.beforeEach(async ({ request }) => {
-    try {
-      await request.post('http://localhost:8000/api/system/reset-demo')
-    } catch {
-      // ignore
-    }
+    const response = await request.post(`${apiBaseURL}/api/system/reset-demo`)
+    expect(response.ok(), 'Demo database reset must succeed').toBe(true)
   })
 
-  test('Fix 1: No clipped numeral at 1280px on Overview / Dashboard', async ({ page }) => {
+  test('Fix 1: Large dashboard values fit at required viewport widths', async ({ page }, testInfo) => {
     await page.goto('/app/dashboard')
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible()
 
-    // Inspect the primary outstanding BigNumeral
     const bigNumeral = page.locator('[data-testid="big-numeral"]').first()
     await expect(bigNumeral).toBeVisible()
+    const originalMarkup = await bigNumeral.innerHTML()
 
-    // Ensure the element's scrollWidth does not exceed clientWidth (no text clipping)
-    const isClipped = await bigNumeral.evaluate((el) => el.scrollWidth > el.clientWidth + 2)
-    expect(isClipped).toBe(false)
+    for (const width of [375, 768, 1024, 1280, 1536]) {
+      await page.setViewportSize({ width, height: 900 })
+      if (width === 768 || width === 1280) {
+        await page.screenshot({
+          path: testInfo.outputPath(`dashboard-${width}.png`),
+          fullPage: true,
+        })
+      }
+
+      await bigNumeral.evaluate((el) => {
+        el.textContent = '₹99,99,99,999.00'
+      })
+      const isClipped = await bigNumeral.evaluate((el) => el.scrollWidth > el.clientWidth + 2)
+      expect(isClipped, `Numeral clipped at ${width}px`).toBe(false)
+      await bigNumeral.evaluate((el, markup) => {
+        el.innerHTML = markup
+      }, originalMarkup)
+    }
   })
 
   test('Fix 2: ProgressRing circular SVG arc exists on Clients page', async ({ page }) => {
     await page.goto('/app/clients')
     await expect(page.getByRole('heading', { name: 'Clients' })).toBeVisible()
 
-    // Find progressbar role elements for reliability scores
-    const progressRings = page.getByRole('progressbar')
+    const progressRings = page.getByRole('img', { name: /Reliability .* out of 100/i })
     await expect(progressRings.first()).toBeVisible()
 
     const count = await progressRings.count()
@@ -41,27 +55,32 @@ test.describe('DuePing Visual & Responsive Fixes', () => {
     expect(circleCount).toBeGreaterThanOrEqual(2)
   })
 
-  test('Fix 3: Strategy segmented control tabs do not wrap on Action Center', async ({ page }) => {
+  test('Fix 3: Strategy segmented control labels do not wrap', async ({ page }) => {
     await page.goto('/app')
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
 
     const tabList = page.getByRole('tablist', { name: /Sort ranking strategies/i })
     await expect(tabList).toBeVisible()
 
-    // Verify all 3 tabs are horizontally aligned on the same row (top offsets equal)
     const tabs = tabList.getByRole('tab')
     expect(await tabs.count()).toBe(3)
 
-    const box0 = await tabs.nth(0).boundingBox()
-    const box1 = await tabs.nth(1).boundingBox()
-    const box2 = await tabs.nth(2).boundingBox()
+    for (const width of [375, 768, 1024, 1280, 1536]) {
+      await page.setViewportSize({ width, height: 900 })
+      for (let index = 0; index < await tabs.count(); index += 1) {
+        const label = tabs.nth(index).locator('span span').first()
+        const wraps = await label.evaluate((el) => {
+          const style = window.getComputedStyle(el)
+          const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5
+          return el.getBoundingClientRect().height > lineHeight + 1
+        })
+        expect(wraps, `Strategy label wrapped at ${width}px`).toBe(false)
+      }
 
-    expect(box0).not.toBeNull()
-    expect(box1).not.toBeNull()
-    expect(box2).not.toBeNull()
-
-    // Top coordinates must be within 2px (aligned on one line, no vertical wrapping)
-    expect(Math.abs(box0!.y - box1!.y)).toBeLessThanOrEqual(2)
-    expect(Math.abs(box1!.y - box2!.y)).toBeLessThanOrEqual(2)
+      const widths = await Promise.all(
+        [0, 1, 2].map(async (index) => (await tabs.nth(index).boundingBox())?.width ?? 0)
+      )
+      expect(Math.max(...widths) - Math.min(...widths), `Strategy segments unequal at ${width}px`).toBeLessThanOrEqual(1)
+    }
   })
 })

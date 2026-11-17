@@ -170,7 +170,7 @@ export function useRunDailyCheck() {
 export function useSetSimulatedDate() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: SimulatedDateUpdate) => apiClient.post<SimulatedDateRead>('/system/date', body),
+    mutationFn: (body: SimulatedDateUpdate) => apiClient.put<SimulatedDateRead>('/system/today', body),
     onSuccess: () => invalidateEverything(qc),
   })
 }
@@ -206,7 +206,7 @@ export function useCreateClient() {
 export function useUpdateClient(clientId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: ClientUpdate) => apiClient.patch<ClientRead>(`/clients/${clientId}`, body),
+    mutationFn: (body: ClientUpdate) => apiClient.put<ClientRead>(`/clients/${clientId}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clients'] })
       qc.invalidateQueries({ queryKey: ['client', clientId] })
