@@ -92,7 +92,7 @@ DUEPING_ENABLE_RESET=1 PYTHONPATH=. .venv/bin/uvicorn app.api.main:app --reload 
 - Interactive OpenAPI / Swagger docs: `http://localhost:8000/docs`
 
 ### Frontend Setup
-**Requirements:** Node.js 18+ and npm 9+
+**Requirements:** Node.js 22+ (LTS) and npm 9+
 
 ```bash
 cd frontend
