@@ -167,7 +167,7 @@ def test_doc_metrics_match_code() -> None:
 
     metrics = {
         "facade_lines": facade_line_count,
-        "backend_tests": 308,
+        "backend_tests": 309,
         "frontend_tests": 36,
         "coverage_pct": 96,
     }

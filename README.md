@@ -132,7 +132,7 @@ npm test -- --run
 npm run lint
 ```
 
-**Test Coverage Benchmark:** **<!-- metric:backend_tests=308 -->308 backend tests passed** in ~1.4s with **<!-- metric:coverage_pct=96 -->96% line coverage** (0 skipped), **<!-- metric:frontend_tests=36 -->36 frontend unit tests passed**, and **13 Playwright E2E and Axe WCAG 2.1 AA accessibility tests passed**.
+**Test Coverage Benchmark:** **<!-- metric:backend_tests=309 -->309 backend tests passed** in ~1.4s with **<!-- metric:coverage_pct=96 -->96% line coverage** (0 skipped), **<!-- metric:frontend_tests=36 -->36 frontend unit tests passed**, and **13 Playwright E2E and Axe WCAG 2.1 AA accessibility tests passed**.
 
 ### Database Reset Note (Schema Hardening)
 The application database includes hardened schemas:
